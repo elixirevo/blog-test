@@ -87,10 +87,10 @@
 
 <div class="container-large article-grid">
 	<!-- Empty Spacer for Asymmetric Balancing -->
-	<div class="article-spacer hidden lg:block"></div>
+	<div class="article-spacer"></div>
 
 	<!-- Central Article Column -->
-	<article class="article-center col-span-full lg:col-span-1">
+	<article class="article-center">
 		<header>
 			<a href={resolve('/')} class="article-back">
 				<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
@@ -163,7 +163,7 @@
 	</article>
 
 	<!-- Right Side Gutter / TOC -->
-	<aside class="article-aside hidden lg:block">
+	<aside class="article-aside">
 		{#if headings.length > 0}
 			<div class="toc-container">
 				<p class="toc-label font-label">Contents</p>

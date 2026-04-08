@@ -1,13 +1,35 @@
 <script lang="ts">
+	import PagefindSearch from '$lib/components/PagefindSearch.svelte';
+
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
 	}
 
+	type ModalSearchState = {
+		query: string;
+		categoryCounts: Record<string, number>;
+	};
+
 	let { isOpen, onClose }: Props = $props();
 
 	let dialog: HTMLDialogElement;
-	const previewCategories = ['Archive', 'Essays', 'Technical', 'History'];
+	let selectedCategory = $state<string | null>(null);
+	const selectedCategories = $derived(selectedCategory ? [selectedCategory] : []);
+	let searchState = $state<ModalSearchState>({
+		query: '',
+		categoryCounts: {}
+	});
+
+	const visibleCategories = $derived.by(() => {
+		return Array.from(
+			new Set([...Object.keys(searchState.categoryCounts), ...selectedCategories])
+		).sort((left, right) => {
+			const countDiff =
+				(searchState.categoryCounts[right] ?? 0) - (searchState.categoryCounts[left] ?? 0);
+			return countDiff || left.localeCompare(right);
+		});
+	});
 
 	$effect(() => {
 		if (isOpen) {
@@ -19,8 +41,25 @@
 		}
 	});
 
+	const resetModalState = () => {
+		selectedCategory = null;
+		searchState = {
+			query: '',
+			categoryCounts: {}
+		};
+	};
+
 	const handleClose = () => {
+		resetModalState();
 		onClose();
+	};
+
+	const handleSearchStateChange = (state: ModalSearchState) => {
+		searchState = state;
+	};
+
+	const toggleCategory = (category: string) => {
+		selectedCategory = selectedCategory === category ? null : category;
 	};
 
 	const handleKeydown = (e: KeyboardEvent) => {
@@ -48,30 +87,38 @@
 			{#if isOpen}
 				<div class="search-frame">
 					<span class="material-symbols-outlined search-icon" data-icon="search">search</span>
-					<div class="search-shell">
-						<div class="search-bar">
-							<input
-								class="search-input"
-								type="text"
-								placeholder="Search the archive"
-								aria-label="Search the archive"
-							/>
-						</div>
-						<div class="search-results-panel">
-							<p class="search-placeholder">Search results area</p>
-						</div>
-					</div>
+					<PagefindSearch
+						splitResults={true}
+						panelClass="search-panel--modal"
+						{selectedCategories}
+						placeholder="Search the archive"
+						autofocus={true}
+						enableKeyboardNavigation={true}
+						onSearchStateChange={handleSearchStateChange}
+						onResultNavigate={handleClose}
+					/>
 					<button class="esc-btn" onclick={handleClose} aria-label="Close search">ESC</button>
 				</div>
 			{/if}
 		</div>
 
-		{#if isOpen}
+		{#if isOpen && visibleCategories.length > 0}
 			<div class="category-suggestions">
 				<h4>Categories</h4>
 				<div class="category-tags">
-					{#each previewCategories as category (category)}
-						<span class="category-tag">{category}</span>
+					{#each visibleCategories as category (category)}
+						<button
+							type="button"
+							class="category-tag"
+							data-active={selectedCategory === category ? 'true' : 'false'}
+							aria-pressed={selectedCategory === category}
+							onclick={() => toggleCategory(category)}
+						>
+							<span>{category}</span>
+							{#if searchState.categoryCounts[category]}
+								<span class="category-count">{searchState.categoryCounts[category]}</span>
+							{/if}
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -131,13 +178,17 @@
 		--search-modal-esc-right: 1.5rem;
 		--search-modal-esc-safe-width: 3rem;
 		--search-modal-esc-gap: 1rem;
+		--search-modal-height-scale: 0.8;
 
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		width: 100%;
 		max-width: 36rem;
-		height: min(42rem, calc(100dvh - 4rem));
+		height: min(
+			calc(42rem * var(--search-modal-height-scale)),
+			calc((100dvh - 4rem) * var(--search-modal-height-scale))
+		);
 		background-color: var(--bg);
 		border: 1px solid var(--border-strong);
 		border-radius: 1rem;
@@ -164,7 +215,13 @@
 		overflow: hidden;
 	}
 
-	.search-shell {
+	.search-frame :global(.search-panel--modal) {
+		display: flex;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.search-frame :global(.search-panel--modal .search-shell) {
 		display: flex;
 		flex-direction: column;
 		flex: 1;
@@ -172,8 +229,15 @@
 		height: 100%;
 	}
 
-	.search-bar {
-		width: 100%;
+	.search-frame :global(.search-panel--modal .pagefind-ui) {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+		height: 100%;
+	}
+
+	.search-frame :global(.search-panel--modal .pagefind-ui__form) {
 		min-height: var(--search-modal-input-height);
 		display: flex;
 		align-items: center;
@@ -181,53 +245,51 @@
 			var(--search-modal-icon-left) + var(--search-modal-icon-size) + var(--search-modal-input-gap)
 		);
 		padding-right: calc(
-			var(--search-modal-esc-right) + var(--search-modal-esc-safe-width) + var(--search-modal-esc-gap)
+			var(--search-modal-esc-right) + var(--search-modal-esc-safe-width) +
+				var(--search-modal-esc-gap)
 		);
 		background-color: var(--bg);
 		border-bottom: 1px solid var(--border-light);
 	}
 
-	.search-input {
-		width: 100%;
-		min-height: 0;
-		padding: 0;
-		border: none;
-		background-color: transparent;
-		color: var(--text);
+	.search-frame :global(.search-panel--modal .pagefind-ui__search-input) {
 		font-family: 'Crimson Pro', serif;
 		font-size: 1.05rem;
 		line-height: 1.4;
 	}
 
-	.search-input::placeholder {
-		color: var(--text-light);
-	}
-
-	.search-input:focus {
-		outline: none;
-	}
-
-	.search-results-panel {
+	.search-frame :global(.search-panel--modal .search-results-host) {
+		display: flex;
 		flex: 1;
 		min-height: 0;
 		background-color: var(--bg);
+	}
+
+	.search-frame :global(.search-panel--modal .search-results-host .pagefind-ui__drawer) {
+		flex: 1;
+		min-height: 0;
+		height: 100%;
+		max-height: none;
 		padding: 1.25rem 1.5rem;
 		overflow-y: auto;
 	}
 
-	.search-placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		min-height: 8rem;
-		border: 1px dashed var(--border-dim);
-		border-radius: 0.75rem;
-		color: var(--text-light);
-		font-family: 'Inter', sans-serif;
-		font-size: 0.75rem;
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
+	.search-frame
+		:global(.search-panel--modal .search-results-host .pagefind-ui__result:first-child) {
+		padding-top: 0;
+		border-top: none;
+	}
+
+	.search-frame :global(.search-panel--modal .search-status) {
+		margin: 0;
+		padding: 1rem 1.5rem;
+		border-top: 1px solid var(--border-light);
+		background-color: var(--bg);
+	}
+
+	.search-frame :global(.search-panel--modal .pagefind-ui__message) {
+		margin-bottom: 0.75rem;
+		padding-bottom: 0.75rem;
 	}
 
 	.search-icon {
@@ -285,7 +347,10 @@
 			--search-modal-icon-size: 1.375rem;
 			--search-modal-input-gap: 1.125rem;
 			--search-modal-esc-safe-width: 3.25rem;
-			height: min(46rem, calc(100dvh - 12rem));
+			height: min(
+				calc(46rem * var(--search-modal-height-scale)),
+				calc((100dvh - 12rem) * var(--search-modal-height-scale))
+			);
 		}
 	}
 
@@ -313,6 +378,7 @@
 	.category-tag {
 		display: inline-flex;
 		align-items: center;
+		gap: 0.5rem;
 		background-color: var(--bg-component);
 		color: var(--text-dim);
 		padding: 0.25rem 0.75rem;
@@ -321,12 +387,35 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 		border: 1px solid transparent;
+		cursor: pointer;
+		appearance: none;
 		transition:
 			background-color 0.2s,
 			color 0.2s,
 			border-color 0.2s;
 	}
-	
+
+	.category-tag:hover {
+		border-color: var(--border-light);
+		color: var(--text);
+	}
+
+	.category-tag[data-active='true'] {
+		background-color: var(--text);
+		border-color: var(--text);
+		color: var(--bg);
+	}
+
+	.category-tag:focus-visible {
+		outline: 2px solid var(--text);
+		outline-offset: 2px;
+	}
+
+	.category-count {
+		font-size: 0.6875rem;
+		opacity: 0.75;
+	}
+
 	.modal-footer {
 		background-color: var(--bg-component);
 		padding: 1rem 1.5rem;
@@ -335,29 +424,29 @@
 		align-items: center;
 		border-top: 1px solid var(--border-light);
 	}
-	
+
 	.footer-actions {
 		display: flex;
 		align-items: center;
 		gap: 1.5rem;
 	}
-	
+
 	.action-item {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		color: var(--text-light);
 	}
-	
+
 	.action-item .material-symbols-outlined {
 		font-size: 0.875rem;
 	}
-	
+
 	.action-item span:not(.material-symbols-outlined) {
 		font-family: 'Inter', sans-serif;
 		font-size: 0.625rem;
 	}
-	
+
 	@keyframes modalFadeIn {
 		to {
 			opacity: 1;

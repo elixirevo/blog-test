@@ -12,6 +12,11 @@
 		splitResults?: boolean;
 		selectedCategories?: string[];
 		onSearchStateChange?: (state: SearchState) => void;
+		onResultNavigate?: () => void;
+		panelClass?: string;
+		placeholder?: string;
+		autofocus?: boolean;
+		enableKeyboardNavigation?: boolean;
 	}
 
 	type PagefindWindow = Window & {
@@ -43,7 +48,12 @@
 	let {
 		splitResults = false,
 		selectedCategories = [],
-		onSearchStateChange = () => {}
+		onSearchStateChange = () => {},
+		onResultNavigate = () => {},
+		panelClass = '',
+		placeholder = 'Search the archive',
+		autofocus = false,
+		enableKeyboardNavigation = false
 	}: Props = $props();
 
 	const bundlePath = `${base}/pagefind/`;
@@ -79,6 +89,22 @@
 			// Pagefind renders its drawer inside its own root, so the modal re-homes it intentionally.
 			// eslint-disable-next-line svelte/no-dom-manipulating
 			resultsHost.append(drawer);
+		}
+	};
+
+	const hideBuiltInFilterPanel = (target: HTMLElement) => {
+		const filterPanel = target.querySelector<HTMLElement>('.pagefind-ui__filter-panel');
+
+		if (filterPanel) {
+			filterPanel.hidden = true;
+			filterPanel.setAttribute('aria-hidden', 'true');
+			filterPanel.style.setProperty('display', 'none', 'important');
+		}
+
+		for (const filterBlock of target.querySelectorAll<HTMLElement>('.pagefind-ui__filter-block')) {
+			filterBlock.hidden = true;
+			filterBlock.setAttribute('aria-hidden', 'true');
+			filterBlock.style.setProperty('display', 'none', 'important');
 		}
 	};
 
@@ -131,16 +157,12 @@
 			clearTimeout(searchStateTimer);
 		}
 
-		if (trimmedQuery === '') {
-			categoryCounts = {};
-			emitSearchState();
-			return;
-		}
-
 		const requestId = ++searchStateRequest;
 		searchStateTimer = setTimeout(async () => {
 			const api = await ensurePagefindApi();
-			const countsResponse = await api.search(searchQuery, { filters: {} });
+			const countsResponse = await api.search(trimmedQuery === '' ? null : searchQuery, {
+				filters: {}
+			});
 
 			if (requestId !== searchStateRequest) {
 				return;
@@ -165,8 +187,108 @@
 		void refreshSearchData();
 	};
 
+	const getResultLinks = () => {
+		const roots = [resultsHost, searchMount].filter(
+			(root): root is HTMLDivElement => root instanceof HTMLDivElement
+		);
+		const links: HTMLAnchorElement[] = [];
+
+		for (const root of roots) {
+			for (const link of root.querySelectorAll<HTMLAnchorElement>('.pagefind-ui__result-link')) {
+				if (links.includes(link)) {
+					continue;
+				}
+
+				links.push(link);
+			}
+		}
+
+		return links;
+	};
+
+	const focusSearchInput = () => {
+		searchInput?.focus();
+	};
+
+	const focusResultAtIndex = (index: number) => {
+		const links = getResultLinks();
+		const link = links[index];
+
+		if (!link) {
+			return;
+		}
+
+		link.focus();
+		link.closest<HTMLElement>('.pagefind-ui__result')?.scrollIntoView({
+			block: 'nearest'
+		});
+	};
+
+	const handleKeyboardNavigation = (event: KeyboardEvent) => {
+		if (
+			!enableKeyboardNavigation ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey ||
+			event.isComposing
+		) {
+			return;
+		}
+
+		const target = event.target;
+
+		if (!(target instanceof Element)) {
+			return;
+		}
+
+		const resultLink = target.closest<HTMLAnchorElement>('.pagefind-ui__result-link');
+		const isSearchInput = target === searchInput || !!target.closest('.pagefind-ui__search-input');
+
+		if (!isSearchInput && !resultLink) {
+			return;
+		}
+
+		const links = getResultLinks();
+
+		if (links.length === 0) {
+			return;
+		}
+
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+
+			if (!resultLink) {
+				focusResultAtIndex(0);
+				return;
+			}
+
+			const currentIndex = links.indexOf(resultLink);
+			focusResultAtIndex(Math.min(currentIndex + 1, links.length - 1));
+			return;
+		}
+
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+
+			if (!resultLink) {
+				focusResultAtIndex(links.length - 1);
+				return;
+			}
+
+			const currentIndex = links.indexOf(resultLink);
+
+			if (currentIndex <= 0) {
+				focusSearchInput();
+				return;
+			}
+
+			focusResultAtIndex(currentIndex - 1);
+		}
+	};
+
 	const syncSearchInput = (target: HTMLElement) => {
-		const nextInput = target.querySelector<HTMLInputElement>('.pagefind-ui__search-input') ?? undefined;
+		const nextInput =
+			target.querySelector<HTMLInputElement>('.pagefind-ui__search-input') ?? undefined;
 
 		if (searchInput === nextInput) {
 			return;
@@ -198,6 +320,28 @@
 		pagefindUi.triggerFilters({
 			Category: selectedCategories
 		});
+	};
+
+	const handleResultClick = (event: Event) => {
+		const target = event.target;
+
+		if (!(target instanceof Element)) {
+			return;
+		}
+
+		if (target.closest('.pagefind-ui__result-link')) {
+			onResultNavigate();
+			return;
+		}
+
+		if (target.closest('a, button, input, textarea, select, summary')) {
+			return;
+		}
+
+		const result = target.closest<HTMLElement>('.pagefind-ui__result');
+		const resultLink = result?.querySelector<HTMLAnchorElement>('.pagefind-ui__result-link');
+
+		resultLink?.click();
 	};
 
 	const ensureStylesheet = (href: string) => {
@@ -246,6 +390,52 @@
 	onMount(() => {
 		let cancelled = false;
 		let drawerObserver: MutationObserver | undefined;
+		let resultClickHosts: HTMLElement[] = [];
+		let keydownHosts: HTMLElement[] = [];
+
+		const syncResultClickHosts = (target: HTMLElement) => {
+			const nextHosts = [target, resultsHost].filter(
+				(host): host is HTMLElement => host instanceof HTMLElement
+			);
+
+			for (const host of resultClickHosts) {
+				if (!nextHosts.includes(host)) {
+					host.removeEventListener('click', handleResultClick);
+				}
+			}
+
+			for (const host of nextHosts) {
+				if (!resultClickHosts.includes(host)) {
+					host.addEventListener('click', handleResultClick);
+				}
+			}
+
+			resultClickHosts = nextHosts;
+		};
+
+		const syncKeyboardNavigationHosts = (target: HTMLElement) => {
+			if (!enableKeyboardNavigation) {
+				return;
+			}
+
+			const nextHosts = [target, resultsHost].filter(
+				(host): host is HTMLElement => host instanceof HTMLElement
+			);
+
+			for (const host of keydownHosts) {
+				if (!nextHosts.includes(host)) {
+					host.removeEventListener('keydown', handleKeyboardNavigation);
+				}
+			}
+
+			for (const host of nextHosts) {
+				if (!keydownHosts.includes(host)) {
+					host.addEventListener('keydown', handleKeyboardNavigation);
+				}
+			}
+
+			keydownHosts = nextHosts;
+		};
 
 		const initSearch = async () => {
 			try {
@@ -271,18 +461,28 @@
 					baseUrl,
 					showImages: false,
 					showSubResults: false,
-					showEmptyFilters: false
+					showEmptyFilters: false,
+					autofocus,
+					translations: {
+						placeholder
+					}
 				});
 
 				moveDrawerToResultsHost(target);
+				hideBuiltInFilterPanel(target);
 				syncSearchInput(target);
 				applySelectedCategories();
+				syncResultClickHosts(target);
+				syncKeyboardNavigationHosts(target);
 
 				drawerObserver = new MutationObserver(() => {
 					syncSearchInput(target);
 					if (splitResults && resultsHost) {
 						moveDrawerToResultsHost(target);
 					}
+					hideBuiltInFilterPanel(target);
+					syncResultClickHosts(target);
+					syncKeyboardNavigationHosts(target);
 				});
 				drawerObserver.observe(target.parentElement ?? target, {
 					childList: true,
@@ -306,6 +506,12 @@
 				clearTimeout(searchStateTimer);
 			}
 			drawerObserver?.disconnect();
+			for (const host of resultClickHosts) {
+				host.removeEventListener('click', handleResultClick);
+			}
+			for (const host of keydownHosts) {
+				host.removeEventListener('keydown', handleKeyboardNavigation);
+			}
 			searchInput?.removeEventListener('input', handleSearchInput);
 			searchInput = undefined;
 			pagefindUi?.destroy();
@@ -316,15 +522,15 @@
 	});
 
 	$effect(() => {
-		const selectedCategoryCount = selectedCategories.length;
-		void selectedCategoryCount;
+		const selectedCategoryKey = selectedCategories.join('\u0000');
+		void selectedCategoryKey;
 		void refreshSearchData();
 		applySelectedCategories();
 	});
 </script>
 
 <div
-	class="search-panel"
+	class={`search-panel ${panelClass}`.trim()}
 	role="search"
 	aria-label="Archive search"
 	data-split-results={splitResults ? 'true' : 'false'}
