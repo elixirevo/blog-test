@@ -1,0 +1,86 @@
+media:
+  input: static/uploads
+  output: /uploads
+
+content:
+  - name: posts
+    label: Posts
+    type: collection
+    path: src/content/posts
+    view:
+      fields: [title, date, category, published]
+    fields:
+      - name: title
+        label: Title
+        type: string
+      - name: description
+        label: Description
+        type: text
+      - name: date
+        label: Publish date
+        type: date
+      - name: published
+        label: Published
+        type: boolean
+      - name: category
+        label: Category
+        type: string
+      - name: cover
+        label: Cover image
+        type: image
+        options:
+          path: covers
+      - name: body
+        label: Body
+        type: rich-text
+        options:
+          format: markdown
+          path: posts
+          switcher: true
+  - name: site
+    label: Site settings
+    type: file
+    path: src/content/site.json
+    fields:
+      - name: title
+        label: Site title
+        type: string
+      - name: tagline
+        label: Tagline
+        type: string
+      - name: description
+        label: Description
+        type: text
+      - name: author
+        label: Author
+        type: string
+      - name: language
+        label: Language
+        type: string
+      - name: url
+        label: Site URL
+        type: string
+      - name: giscusRepo
+        label: Giscus repo
+        type: string
+      - name: giscusRepoId
+        label: Giscus repo ID
+        type: string
+      - name: giscusCategory
+        label: Giscus category
+        type: string
+      - name: giscusCategoryId
+        label: Giscus category ID
+        type: string
+      - name: footer
+        label: Footer
+        type: string
+
+settings:
+  content:
+    merge: true
+
+actions:
+  - name: deploy-site
+    label: Deploy GitHub Pages
+    workflow: deploy.yml

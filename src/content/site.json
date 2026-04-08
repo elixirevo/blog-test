@@ -1,0 +1,13 @@
+{
+	"title": "Elixirevo",
+	"tagline": "Static publishing for product notes and experiments",
+	"description": "SvelteKit, GitHub Pages, and Pages CMS로 구성한 정적 블로그입니다. 글은 Markdown으로 관리하고 배포는 GitHub Actions가 담당합니다.",
+	"author": "Elixir Evo",
+	"language": "ko-KR",
+	"url": "https://your-username.github.io/blog",
+	"giscusRepo": "",
+	"giscusRepoId": "",
+	"giscusCategory": "",
+	"giscusCategoryId": "",
+	"footer": "Built with SvelteKit, GitHub Pages, and Pages CMS."
+}
