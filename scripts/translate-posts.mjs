@@ -25,6 +25,10 @@ const defaultApiUrl = (() => {
 
 const translateEndpoint = `${defaultApiUrl}/v2/translate`;
 const translationChunkLimit = 20_000;
+const customInstructions = [
+	'Capitalize the first letter of titles and paragraph openings when natural in English.',
+	'Use standard English capitalization for headings and the start of body paragraphs.'
+];
 
 const hashContent = (value) => createHash('sha256').update(value).digest('hex');
 
@@ -41,16 +45,6 @@ const formatFrontmatterDate = (value) => {
 };
 
 const toPosixPath = (value) => value.split(path.sep).join('/');
-
-const normalizeEnglishTitle = (value) =>
-	value.replace(/^([^\p{Letter}]*)(\p{Letter}+)/u, (match, prefix, word) => {
-		if (word !== word.toLowerCase() || word === word.toUpperCase()) {
-			return match;
-		}
-
-		const [firstChar, ...restChars] = Array.from(word);
-		return `${prefix}${firstChar?.toUpperCase() ?? ''}${restChars.join('')}`;
-	});
 
 const listMarkdownFiles = async (dir) => {
 	try {
@@ -86,24 +80,6 @@ const inferTranslationState = async (targetFile) => {
 
 		throw error;
 	}
-};
-
-const normalizeStoredTranslationTitle = async (targetFile) => {
-	const raw = await readFile(targetFile, 'utf8');
-	const { data, content } = matter(raw);
-
-	if (typeof data.title !== 'string' || data.title === '') {
-		return false;
-	}
-
-	const normalizedTitle = normalizeEnglishTitle(data.title);
-	if (normalizedTitle === data.title) {
-		return false;
-	}
-
-	data.title = normalizedTitle;
-	await writeFile(targetFile, matter.stringify(content, data), 'utf8');
-	return true;
 };
 
 const splitMarkdownForTranslation = (content) => {
@@ -185,6 +161,8 @@ const translateTexts = async (texts) => {
 			source_lang: 'KO',
 			target_lang: 'EN-US',
 			preserve_formatting: true,
+			model_type: 'quality_optimized',
+			custom_instructions: customInstructions,
 			text: texts
 		})
 	});
@@ -227,7 +205,7 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 		.join('');
 
 	const nextData = {
-		title: normalizeEnglishTitle(translated[0] ?? ''),
+		title: translated[0],
 		description: translated[1],
 		date,
 		published: data.published !== false,
@@ -305,18 +283,6 @@ for (const job of pending) {
 	);
 }
 
-const currentTargetFiles = await listMarkdownFiles(targetDir);
-let normalizedCount = 0;
-
-for (const targetFile of currentTargetFiles) {
-	if (!(await normalizeStoredTranslationTitle(targetFile))) {
-		continue;
-	}
-
-	normalizedCount += 1;
-	console.log(`Normalized title casing: ${toPosixPath(path.relative(projectRoot, targetFile))}`);
-}
-
 console.log(
-	`DeepL sync complete. created_or_updated=${translatedCount} skipped=${skippedCount} normalized=${normalizedCount} removed=${removedCount}`
+	`DeepL sync complete. created_or_updated=${translatedCount} skipped=${skippedCount} removed=${removedCount}`
 );
