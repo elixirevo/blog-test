@@ -12,6 +12,17 @@
 	--border-light: rgba(173, 179, 180, 0.15);
 	--border-dim: rgba(173, 179, 180, 0.3);
 	--border-strong: #adb3b4;
+	--code-bg: #edf2f4;
+	--code-text: #203038;
+	--code-border: rgba(80, 97, 105, 0.14);
+	--code-keyword: #9a3f59;
+	--code-string: #2e6d5b;
+	--code-number: #86613a;
+	--code-title: #1f5b87;
+	--code-type: #6f4e9a;
+	--code-variable: #9a4f2a;
+	--code-comment: #6e7f82;
+	--code-meta: #8a4c64;
 	--selection-bg: #d4e5ef;
 	--selection-text: #44545c;
 	--bg-gradient: radial-gradient(
@@ -37,6 +48,17 @@ html.dark {
 	--border-light: rgba(173, 179, 180, 0.15);
 	--border-dim: rgba(173, 179, 180, 0.2);
 	--border-strong: rgba(173, 179, 180, 0.6);
+	--code-bg: #111617;
+	--code-text: #ecf3f4;
+	--code-border: rgba(173, 179, 180, 0.14);
+	--code-keyword: #ff8fab;
+	--code-string: #8de0b4;
+	--code-number: #ffd089;
+	--code-title: #7cc7ff;
+	--code-type: #d2a8ff;
+	--code-variable: #ffb26b;
+	--code-comment: #7a8b8d;
+	--code-meta: #ff9ec0;
 	--selection-bg: rgba(69, 85, 93, 0.3);
 	--selection-text: #ffffff;
 	--bg-gradient: radial-gradient(circle at top right, #1a1c1c 0%, transparent 60%);
@@ -667,14 +689,88 @@ html.dark .archive-card:hover {
 }
 
 .article-content pre {
-	background-color: #0c0f0f;
-	color: #f0f9ff;
-	padding: 1.5rem;
+	position: relative;
+	background-color: var(--code-bg);
+	color: var(--code-text);
+	padding: 2.25rem 1.5rem 1.5rem;
 	border-radius: var(--radius);
+	border: 1px solid var(--code-border);
 	font-family: 'Inter', sans-serif;
 	font-size: 0.875rem;
 	overflow-x: auto;
 	margin: 2rem 0;
+	line-height: 1.75;
+	tab-size: 2;
+}
+
+.article-content pre code {
+	display: block;
+	background: transparent;
+	color: inherit;
+	font-family: inherit;
+}
+
+.article-content .code-language {
+	position: absolute;
+	top: 0.75rem;
+	right: 1rem;
+	font-family: 'Inter', sans-serif;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: var(--code-comment);
+	text-transform: uppercase;
+	pointer-events: none;
+}
+
+.article-content .hljs-comment,
+.article-content .hljs-quote {
+	color: var(--code-comment);
+}
+
+.article-content .hljs-keyword,
+.article-content .hljs-selector-tag,
+.article-content .hljs-literal {
+	color: var(--code-keyword);
+}
+
+.article-content .hljs-string,
+.article-content .hljs-regexp,
+.article-content .hljs-addition,
+.article-content .hljs-attribute {
+	color: var(--code-string);
+}
+
+.article-content .hljs-number,
+.article-content .hljs-symbol,
+.article-content .hljs-bullet {
+	color: var(--code-number);
+}
+
+.article-content .hljs-type,
+.article-content .hljs-built_in,
+.article-content .hljs-title.class_,
+.article-content .hljs-class .hljs-title {
+	color: var(--code-type);
+}
+
+.article-content .hljs-title,
+.article-content .hljs-title.function_,
+.article-content .hljs-section {
+	color: var(--code-title);
+}
+
+.article-content .hljs-variable,
+.article-content .hljs-template-variable,
+.article-content .hljs-params,
+.article-content .hljs-property {
+	color: var(--code-variable);
+}
+
+.article-content .hljs-meta,
+.article-content .hljs-doctag,
+.article-content .hljs-deletion {
+	color: var(--code-meta);
 }
 
 .article-content code:not(pre code) {

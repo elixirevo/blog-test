@@ -1,11 +1,46 @@
 import matter from 'gray-matter';
-import { marked } from 'marked';
+import hljs from 'highlight.js';
+import { marked, type Tokens } from 'marked';
 import type { Locale } from '$lib/i18n';
 import { getSiteConfig } from '$lib/site';
 
+const escapeHtml = (value: string) =>
+	value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
+
+const normalizeLanguage = (lang: string | undefined) => {
+	const language = lang?.match(/\S+/)?.[0]?.toLowerCase();
+
+	if (!language) {
+		return null;
+	}
+
+	return hljs.getLanguage(language) ? language : null;
+};
+
+const renderCodeBlock = ({ text, lang }: Tokens.Code) => {
+	const language = normalizeLanguage(lang);
+	const highlighted = language
+		? hljs.highlight(text, { language, ignoreIllegals: true }).value
+		: escapeHtml(text);
+	const languageClass = language ? ` language-${language}` : ' language-plaintext';
+	const languageLabel = language ? language.toUpperCase() : 'TEXT';
+
+	return `<pre class="code-block"><span class="code-language">${languageLabel}</span><code class="hljs${languageClass}">${highlighted}</code></pre>`;
+};
+
 marked.use({
 	gfm: true,
-	breaks: false
+	breaks: false,
+	renderer: {
+		code(token) {
+			return renderCodeBlock(token);
+		}
+	}
 });
 
 const postFilesByLocale: Record<Locale, Record<string, string>> = {
