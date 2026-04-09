@@ -3,12 +3,12 @@ title: AI Spend Coach Service Brief
 description: AI Spend Coach Service Brief
 date: '2026-04-09'
 published: true
-category: Notes
+category: Technical
 locale: en
 sourcePath: src/content/posts/2026-04-09-ai-spend-test.md
-sourceHash: 57ad5ae3ea09a9fad82d93227d45e5d8e9ae2ace6e229542e9866516e5d2f19e
+sourceHash: 5fa2f1f29bbeffd2f778b7684c4a6d43e1dd6866615565fa5a0ff335cb762530
 translationSource: deepl
-translatedAt: '2026-04-09T05:58:40.676Z'
+translatedAt: '2026-04-09T05:59:36.087Z'
 ---
 # AI Spend Coach Service Brief
 
@@ -43,22 +43,23 @@ to solve this problem, the service reorganizes your spending into patterns, caus
 this service has four goals
 
 1. **Automatically detect recurring spending patterns
-   automatically detect recurring subscriptions, small recurring purchases, time-of-day/day-of-week spending, category spikes, etc.
 
-2. **Interpret spending drivers
-   instead of just saying, "We spent more on dining out this month."
-   "I've been working more nights, which has led to an increase in weeknight delivery spending, which has led to an increase in weekend dining out, which has led to an accumulation of spending."
+  automatically identify recurring subscriptions, small recurring payments, time-of-day/day-of-week spending, category spikes, and more.
+2. **Interpret spend drivers
 
+  instead of just saying, "We spent more on dining out this month."
+   "I've been working more nights, which has increased my weeknight delivery spend, and I've been eating out on the weekends, which has added up."
 3. **Provide a call to action
-   instead of "cut back"
-   "This subscription is a candidate for cancelation," "Set a cap on your delivery budget," "Challenge yourself to go zero twice a week," "Mismatch your current card offers," etc.
 
+  instead of "cut back"
+   "This subscription is a candidate for cancellation," "Set a cap on your delivery budget," "Challenge yourself to go no spend twice a week," or "Mismatch your current card offers."
 4. **Provide real-time alerts and progress feedback
-   alert you when you're about to overspend and provide easy-to-understand feedback on your current progress against your goals.
+
+  alert you when you're about to overspend and provide easy-to-understand feedback on your current progress against your goals.
 
 ---
 
-## 4
+## 4. Target users
 
 ### Primary Target
 
@@ -118,3 +119,4 @@ export async function POST({ request }) {
 
 
 
+&nbsp;
