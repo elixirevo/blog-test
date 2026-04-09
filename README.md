@@ -93,17 +93,35 @@ SITE_BASE_PATH=blog bun run build
 
 ## Giscus comments setup
 
-포스트 상세 페이지에는 Giscus 댓글 영역이 연결되어 있습니다. 실제 댓글을 활성화하려면 아래 값을 `src/content/site.json` 또는 Pages CMS의 `Site settings`에 채워야 합니다.
+포스트 상세 페이지에는 Giscus 댓글 영역이 연결되어 있습니다. 이 프로젝트는 공개 가능한 Giscus 설정을 루트의 `.env.production` 파일로 관리합니다.
 
-- `giscusRepo`: `owner/repo` 형식의 GitHub 저장소
-- `giscusRepoId`: Giscus가 요구하는 저장소 ID
-- `giscusCategory`: 댓글을 저장할 GitHub Discussions 카테고리 이름
-- `giscusCategoryId`: 해당 카테고리 ID
+- `PUBLIC_GISCUS_REPO`: `owner/repo` 형식의 GitHub 저장소
+- `PUBLIC_GISCUS_REPO_ID`: Giscus가 요구하는 저장소 ID
+- `PUBLIC_GISCUS_CATEGORY`: 댓글을 저장할 GitHub Discussions 카테고리 이름
+- `PUBLIC_GISCUS_CATEGORY_ID`: 해당 카테고리 ID
+
+현재 값은 이미 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 들어 있습니다. 이 파일은 공개 설정 전용으로 커밋됩니다.
+
+```sh
+.env.production
+
+PUBLIC_GISCUS_REPO=elixirevo/blog-test
+PUBLIC_GISCUS_REPO_ID=R_kgDOR9vpNw
+PUBLIC_GISCUS_CATEGORY=General
+PUBLIC_GISCUS_CATEGORY_ID=DIC_kwDOR9vpN84C6b0s
+```
+
+로컬에서 같은 값을 임시로 덮어쓰고 싶다면 셸 환경변수로 넘길 수도 있습니다.
+
+```sh
+PUBLIC_GISCUS_CATEGORY=Announcements \
+bun run build
+```
 
 설정 절차:
 
 1. 저장소에서 GitHub Discussions를 활성화합니다.
 2. [giscus.app](https://giscus.app)에서 저장소와 카테고리를 선택합니다.
-3. 생성된 값 중 `repo`, `repoId`, `category`, `categoryId`를 위 필드에 복사합니다.
+3. 생성된 값 중 `repo`, `repoId`, `category`, `categoryId`를 `.env.production`에 복사합니다.
 
 사이트의 다크모드 토글은 Giscus iframe 테마와 자동으로 동기화됩니다.
