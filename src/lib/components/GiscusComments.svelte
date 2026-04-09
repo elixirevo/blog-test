@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
+	import type { UiCopy } from '$lib/i18n';
 	import type { SiteConfig } from '$lib/site';
 	import { onMount } from 'svelte';
 
@@ -9,7 +10,7 @@
 		};
 	};
 
-	let { site }: { site: SiteConfig } = $props();
+	let { site, ui }: { site: SiteConfig; ui: UiCopy } = $props();
 
 	let container = $state<HTMLDivElement | null>(null);
 	let theme = $state('light');
@@ -109,8 +110,8 @@
 	<section class="giscus-section">
 		<div class="giscus-wrapper">
 			<div class="giscus-header">
-				<p class="giscus-label font-label">Conversation</p>
-				<h2 class="giscus-title font-headline">의견을 남겨보세요</h2>
+				<p class="giscus-label font-label">{ui.comments.label}</p>
+				<h2 class="giscus-title font-headline">{ui.comments.title}</h2>
 			</div>
 
 			{#if isConfigured()}
@@ -119,8 +120,7 @@
 				</div>
 			{:else}
 				<div class="giscus-empty font-label">
-					`site.json`에 `giscusRepo`, `giscusRepoId`, `giscusCategory`, `giscusCategoryId`를 채우면
-					댓글이 활성화됩니다.
+					{ui.comments.emptyMessage}
 				</div>
 			{/if}
 		</div>

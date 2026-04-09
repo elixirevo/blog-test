@@ -8,6 +8,7 @@ SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`
 - GitHub Pages deployment via `.github/workflows/deploy.yml`
 - Pages CMS via root `.pages.yml`
 - Markdown posts in `src/content/posts`
+- DeepL translation sync into `src/content/translations/en/posts`
 
 ## Local development
 
@@ -23,17 +24,25 @@ bun run build
 bun run preview
 ```
 
+영문 번역 파일까지 로컬에서 갱신하려면 DeepL API 키를 넣고 아래 명령을 실행합니다.
+
+```sh
+DEEPL_API_KEY=your-key bun run translate:posts
+```
+
 ## Content structure
 
 - `src/content/site.json`: 사이트 제목, 설명, URL 같은 메타 정보
 - `src/content/posts/*.md`: frontmatter + Markdown 본문
+- `src/content/translations/en/posts/*.md`: DeepL이 생성하고 커밋하는 영문 번역본
 - `static/uploads`: CMS 업로드 이미지
 
 ## Search
 
 - `/search`: Pagefind 기반 전체 검색 페이지
+- `/en/search`: 영어 번역본 전용 검색 페이지
 - 게시글 상세 페이지의 제목, 설명, 본문이 검색 인덱스에 포함됩니다.
-- 카테고리는 Pagefind filter로 노출됩니다.
+- 카테고리와 로케일은 Pagefind filter로 노출됩니다.
 
 ## GitHub Pages setup
 
@@ -41,6 +50,8 @@ bun run preview
 2. GitHub 저장소의 `Settings > Pages`에서 `Source`를 `GitHub Actions`로 설정합니다.
 3. 기본 브랜치가 `main`인지 확인합니다.
 4. `src/content/site.json`의 `url`을 실제 배포 URL로 바꿉니다.
+5. 저장소 `Secrets and variables > Actions`에 `DEEPL_API_KEY`를 추가합니다.
+6. DeepL Free를 쓰면 선택적으로 `DEEPL_API_URL=https://api-free.deepl.com`도 추가합니다.
 
 프로젝트 Pages 저장소라면 빌드 시 `GITHUB_REPOSITORY` 값을 읽어 자동으로 base path를 맞춥니다. 사용자/조직 루트 Pages 저장소라면 base path는 빈 문자열로 유지됩니다.
 
@@ -58,6 +69,27 @@ SITE_BASE_PATH=blog bun run build
 4. 글을 저장하면 저장소에 커밋되고, `main` 브랜치 푸시 시 GitHub Pages가 다시 배포됩니다.
 
 `workflow_dispatch`가 열려 있으므로 Pages CMS에서 `Deploy GitHub Pages` 액션 버튼으로 수동 배포도 실행할 수 있습니다.
+
+현재 CMS 설정은 아래 운영 규칙을 포함합니다.
+
+- 새 글 파일명: `YYYY-MM-DD-title.md`
+- 업로드 파일명: safe slug로 정규화
+- 카테고리: 기본 옵션 제공 + 새 카테고리 생성 가능
+- 글 목록: `date desc` 기준으로 기본 정렬
+
+## Translation workflow
+
+1. Pages CMS에서 한국어 원문을 `src/content/posts/*.md`에 저장합니다.
+2. GitHub Actions가 `bun run translate:posts`를 실행합니다.
+3. 영문 번역본이 없거나 원문 해시가 바뀐 경우에만 DeepL을 호출합니다.
+4. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
+5. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
+
+브라우저 첫 접속 시 기본 로케일은 다음 규칙으로 결정됩니다.
+
+- `navigator.languages[0]`이 `ko`로 시작하면 한국어 라우트 유지
+- 그 외 브라우저는 대응되는 `/en/...` 라우트로 이동
+- 상단 언어 토글을 누르면 선택이 `localStorage.preferredLocale`에 저장
 
 ## Giscus comments setup
 

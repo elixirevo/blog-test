@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { siteConfig } from '$lib/site';
+import { getSiteConfig } from '$lib/site';
 import { getAllPosts } from '$lib/server/content';
 
 export const prerender = true;
@@ -17,10 +17,13 @@ const normalizeSiteUrl = (value: string) => value.replace(/\/+$/, '');
 
 const withBase = (path: string) => `${base}${path}`;
 
-const toAbsoluteUrl = (path: string) => new URL(withBase(path), `${normalizeSiteUrl(siteConfig.url)}/`).toString();
+const siteConfig = getSiteConfig('ko');
+
+const toAbsoluteUrl = (path: string) =>
+	new URL(withBase(path), `${normalizeSiteUrl(siteConfig.url)}/`).toString();
 
 export const GET = () => {
-	const posts = getAllPosts();
+	const posts = getAllPosts('ko');
 	const channelLink = toAbsoluteUrl('/blog/');
 	const feedLink = toAbsoluteUrl('/rss.xml');
 	const lastBuildDate = posts[0]?.date ?? new Date().toISOString();

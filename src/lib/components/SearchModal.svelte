@@ -1,9 +1,12 @@
 <script lang="ts">
 	import PagefindSearch from '$lib/components/PagefindSearch.svelte';
+	import type { Locale, UiCopy } from '$lib/i18n';
 
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
+		locale: Locale;
+		ui: UiCopy;
 	}
 
 	type ModalSearchState = {
@@ -11,7 +14,7 @@
 		categoryCounts: Record<string, number>;
 	};
 
-	let { isOpen, onClose }: Props = $props();
+	let { isOpen, onClose, locale, ui }: Props = $props();
 
 	let dialog: HTMLDialogElement;
 	let selectedCategory = $state<string | null>(null);
@@ -89,22 +92,29 @@
 					<span class="material-symbols-outlined search-icon" data-icon="search">search</span>
 					<PagefindSearch
 						splitResults={true}
+						{locale}
 						panelClass="search-panel--modal"
 						{selectedCategories}
-						placeholder="Search the archive"
+						placeholder={ui.search.placeholder}
+						ariaLabel={ui.search.ariaLabel}
 						autofocus={true}
 						enableKeyboardNavigation={true}
 						onSearchStateChange={handleSearchStateChange}
 						onResultNavigate={handleClose}
+						statusMessages={{
+							loading: ui.search.loading,
+							missingTitle: ui.search.missingTitle,
+							missingHint: ui.search.missingHint
+						}}
 					/>
-					<button class="esc-btn" onclick={handleClose} aria-label="Close search">ESC</button>
+					<button class="esc-btn" onclick={handleClose} aria-label={ui.modal.close}>ESC</button>
 				</div>
 			{/if}
 		</div>
 
 		{#if isOpen && visibleCategories.length > 0}
 			<div class="category-suggestions">
-				<h4>Categories</h4>
+				<h4>{ui.modal.categories}</h4>
 				<div class="category-tags">
 					{#each visibleCategories as category (category)}
 						<button
@@ -128,11 +138,11 @@
 			<div class="footer-actions">
 				<div class="action-item">
 					<span class="material-symbols-outlined">keyboard_return</span>
-					<span>Select</span>
+					<span>{ui.modal.select}</span>
 				</div>
 				<div class="action-item">
 					<span class="material-symbols-outlined">swap_vert</span>
-					<span>Navigate</span>
+					<span>{ui.modal.navigate}</span>
 				</div>
 			</div>
 		</div>

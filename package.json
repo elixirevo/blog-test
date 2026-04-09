@@ -7,6 +7,7 @@
 		"dev": "vite dev",
 		"build": "vite build && pagefind --site build",
 		"preview": "bun ./scripts/preview.mjs",
+		"translate:posts": "bun ./scripts/translate-posts.mjs",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

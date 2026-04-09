@@ -208,6 +208,17 @@ input {
 		color 0.3s ease;
 }
 
+.locale-link {
+	color: var(--text-link);
+	opacity: 0.8;
+	font-size: 0.75rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	transition:
+		opacity 0.3s ease,
+		color 0.3s ease;
+}
+
 @media (min-width: 768px) {
 	.search-box {
 		background-color: var(--bg-component);
@@ -242,6 +253,11 @@ input {
 }
 
 .theme-toggle:hover {
+	opacity: 1;
+	color: var(--text-link-hover);
+}
+
+.locale-link:hover {
 	opacity: 1;
 	color: var(--text-link-hover);
 }

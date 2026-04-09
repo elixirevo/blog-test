@@ -1,14 +1,25 @@
 media:
   input: static/uploads
   output: /uploads
+  rename: safe
+  categories: [image]
 
 content:
   - name: posts
     label: Posts
     type: collection
     path: src/content/posts
+    filename:
+      template: '{year}-{month}-{day}-{title}.md'
+      field: create
     view:
+      primary: title
       fields: [title, date, category, published]
+      sort: [date, title, category]
+      search: [title, description, category]
+      default:
+        sort: date
+        order: desc
     fields:
       - name: title
         label: Title
@@ -19,12 +30,18 @@ content:
       - name: date
         label: Publish date
         type: date
+        options:
+          format: yyyy-MM-dd
       - name: published
         label: Published
         type: boolean
       - name: category
         label: Category
-        type: string
+        type: select
+        options:
+          values: [Essays, Technical, History, Archive, Notes]
+          creatable: true
+          placeholder: Select or create a category
       - name: cover
         label: Cover image
         type: image
@@ -79,6 +96,12 @@ content:
 settings:
   content:
     merge: true
+  commit:
+    templates:
+      create: 'content(create): {path}'
+      update: 'content(update): {path}'
+      delete: 'content(delete): {path}'
+      rename: 'content(rename): {oldPath} -> {newPath}'
 
 actions:
   - name: deploy-site

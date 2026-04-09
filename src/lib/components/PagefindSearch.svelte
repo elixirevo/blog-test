@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import type { Locale } from '$lib/i18n';
 	import { onMount } from 'svelte';
 
 	type SearchStatus = 'loading' | 'ready' | 'missing';
@@ -10,6 +11,7 @@
 
 	interface Props {
 		splitResults?: boolean;
+		locale?: Locale;
 		selectedCategories?: string[];
 		onSearchStateChange?: (state: SearchState) => void;
 		onResultNavigate?: () => void;
@@ -17,6 +19,12 @@
 		placeholder?: string;
 		autofocus?: boolean;
 		enableKeyboardNavigation?: boolean;
+		ariaLabel?: string;
+		statusMessages?: {
+			loading: string;
+			missingTitle: string;
+			missingHint: string;
+		};
 	}
 
 	type PagefindWindow = Window & {
@@ -47,13 +55,20 @@
 
 	let {
 		splitResults = false,
+		locale,
 		selectedCategories = [],
 		onSearchStateChange = () => {},
 		onResultNavigate = () => {},
 		panelClass = '',
 		placeholder = 'Search the archive',
 		autofocus = false,
-		enableKeyboardNavigation = false
+		enableKeyboardNavigation = false,
+		ariaLabel = 'Archive search',
+		statusMessages = {
+			loading: '검색 인덱스를 불러오는 중입니다.',
+			missingTitle: 'Pagefind 인덱스를 아직 찾지 못했습니다.',
+			missingHint: '로컬에서는 `bun run build` 후 `bun run preview`에서 검색을 확인할 수 있습니다.'
+		}
 	}: Props = $props();
 
 	const bundlePath = `${base}/pagefind/`;
@@ -76,6 +91,26 @@
 			query: searchQuery,
 			categoryCounts
 		});
+	};
+
+	const buildLocaleFilter = (): Record<string, string[] | string> => {
+		const filters: Record<string, string[] | string> = {};
+
+		if (locale) {
+			filters.Locale = [locale];
+		}
+
+		return filters;
+	};
+
+	const buildResultFilters = (): Record<string, string[] | string> => {
+		const filters = buildLocaleFilter();
+
+		if (selectedCategories.length > 0) {
+			filters.Category = selectedCategories;
+		}
+
+		return filters;
 	};
 
 	const moveDrawerToResultsHost = (target: HTMLElement) => {
@@ -161,7 +196,7 @@
 		searchStateTimer = setTimeout(async () => {
 			const api = await ensurePagefindApi();
 			const countsResponse = await api.search(trimmedQuery === '' ? null : searchQuery, {
-				filters: {}
+				filters: buildLocaleFilter()
 			});
 
 			if (requestId !== searchStateRequest) {
@@ -312,14 +347,7 @@
 			return;
 		}
 
-		if (selectedCategories.length === 0) {
-			pagefindUi.triggerFilters({});
-			return;
-		}
-
-		pagefindUi.triggerFilters({
-			Category: selectedCategories
-		});
+		pagefindUi.triggerFilters(buildResultFilters());
 	};
 
 	const handleResultClick = (event: Event) => {
@@ -524,6 +552,7 @@
 	$effect(() => {
 		const selectedCategoryKey = selectedCategories.join('\u0000');
 		void selectedCategoryKey;
+		void locale;
 		void refreshSearchData();
 		applySelectedCategories();
 	});
@@ -532,7 +561,7 @@
 <div
 	class={`search-panel ${panelClass}`.trim()}
 	role="search"
-	aria-label="Archive search"
+	aria-label={ariaLabel}
 	data-split-results={splitResults ? 'true' : 'false'}
 >
 	<div class="search-shell">
@@ -543,13 +572,12 @@
 	</div>
 
 	{#if status === 'loading'}
-		<p class="search-status" data-state="loading">검색 인덱스를 불러오는 중입니다.</p>
+		<p class="search-status" data-state="loading">{statusMessages.loading}</p>
 	{:else if status === 'missing'}
 		<div class="search-status" data-state="missing">
-			<p>Pagefind 인덱스를 아직 찾지 못했습니다.</p>
+			<p>{statusMessages.missingTitle}</p>
 			<p class="search-hint">
-				로컬에서는 <code>bun run build</code> 후 <code>bun run preview</code>에서 검색을 확인할 수
-				있습니다.
+				{statusMessages.missingHint}
 			</p>
 		</div>
 	{/if}

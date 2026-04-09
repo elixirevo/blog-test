@@ -1,11 +1,20 @@
 <script lang="ts">
 	import '../app.css';
-	import { resolve } from '$app/paths';
-	import favicon from '$lib/assets/favicon.svg';
-	import { siteConfig } from '$lib/site';
-	import { onMount } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
+	import { base, resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import SearchModal from '$lib/components/SearchModal.svelte';
+	import favicon from '$lib/assets/favicon.svg';
+	import {
+		getLocaleFromPathname,
+		getPreferredLocale,
+		getUiCopy,
+		stripBasePath,
+		toLocalePathname,
+		withBasePath
+	} from '$lib/i18n';
+	import { getSiteConfig } from '$lib/site';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
 
@@ -13,20 +22,55 @@
 	let isDarkMode = $state(false);
 	let isSearchOpen = $state(false);
 
+	const routeLocale = $derived(
+		page.route.id?.startsWith('/en')
+			? 'en'
+			: getLocaleFromPathname(stripBasePath(page.url.pathname, base))
+	);
+	const site = $derived(getSiteConfig(routeLocale));
+	const ui = $derived(getUiCopy(routeLocale));
+	const alternateLocale = $derived(routeLocale === 'en' ? 'ko' : 'en');
+	const alternatePath = $derived(
+		toLocalePathname(stripBasePath(page.url.pathname, base), alternateLocale)
+	);
+	const alternateHref = $derived(withBasePath(alternatePath, base));
+
+	const syncThemeFromStorage = () => {
+		const prefersDark =
+			localStorage.theme === 'dark' ||
+			(!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+		document.documentElement.classList.toggle('dark', prefersDark);
+		isDarkMode = prefersDark;
+	};
+
 	afterNavigate(() => {
 		isSearchOpen = false;
+		if (typeof document !== 'undefined') {
+			document.documentElement.lang = site.language;
+		}
 	});
 
 	onMount(() => {
-		if (
-			localStorage.theme === 'dark' ||
-			(!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-		) {
-			document.documentElement.classList.add('dark');
-			isDarkMode = true;
-		} else {
-			document.documentElement.classList.remove('dark');
-			isDarkMode = false;
+		document.documentElement.lang = site.language;
+		syncThemeFromStorage();
+
+		const storedLocale = localStorage.getItem('preferredLocale');
+		const preferredLocale =
+			storedLocale === 'ko' || storedLocale === 'en'
+				? storedLocale
+				: getPreferredLocale(window.navigator.languages);
+
+		if (preferredLocale !== routeLocale) {
+			const nextPath = withBasePath(
+				toLocalePathname(stripBasePath(window.location.pathname, base), preferredLocale),
+				base
+			);
+			void goto(`${nextPath}${window.location.search}${window.location.hash}`, {
+				replaceState: true,
+				noScroll: true,
+				keepFocus: true
+			});
 		}
 	});
 
@@ -40,19 +84,27 @@
 			localStorage.theme = 'light';
 		}
 	};
+
+	const persistLocale = (locale: 'ko' | 'en') => {
+		localStorage.setItem('preferredLocale', locale);
+	};
+
+	const switchLocale = (locale: 'ko' | 'en') => {
+		persistLocale(locale);
+		void goto(alternateHref, {
+			replaceState: false,
+			noScroll: true,
+			keepFocus: true
+		});
+	};
 </script>
 
 <svelte:head>
-	<title>{siteConfig.title}</title>
-	<meta name="description" content={siteConfig.description} />
+	<title>{site.title}</title>
+	<meta name="description" content={site.description} />
 	<meta name="theme-color" content="#f9f9f9" />
 	<link rel="icon" href={favicon} />
-	<link
-		rel="alternate"
-		type="application/rss+xml"
-		title={siteConfig.title}
-		href={resolve('/rss.xml')}
-	/>
+	<link rel="alternate" type="application/rss+xml" title={site.title} href={resolve('/rss.xml')} />
 </svelte:head>
 
 <div class="app-shell">
@@ -60,13 +112,24 @@
 
 	<nav class="navbar">
 		<div class="container">
-			<a class="nav-brand" href={resolve('/')}>
-				{siteConfig.title}
+			<a class="nav-brand" href={resolve(routeLocale === 'en' ? '/en' : '/')}>
+				{site.title}
 			</a>
 			<div class="nav-actions">
-				<button class="search-box" onclick={() => isSearchOpen = true} aria-label="Search posts">
+				<button
+					class="search-box"
+					onclick={() => (isSearchOpen = true)}
+					aria-label={ui.nav.searchAriaLabel}
+				>
 					<span class="material-symbols-outlined" data-icon="search">search</span>
-					<span class="ui-font">Search archive...</span>
+					<span class="ui-font">{ui.nav.searchButton}</span>
+				</button>
+				<button
+					type="button"
+					class="locale-link ui-font"
+					onclick={() => switchLocale(alternateLocale)}
+				>
+					{ui.nav.localeSwitch}
 				</button>
 				<button onclick={toggleTheme} aria-label="Toggle theme" class="theme-toggle">
 					<span
@@ -87,10 +150,10 @@
 		<div class="container">
 			<span class="footer-copy font-label">
 				© {currentYear}
-				{siteConfig.title}. Built for clarity.
+				{site.title}. {site.footer}
 			</span>
 			<div class="footer-links font-label">
-				<a href={resolve('/rss.xml')}>RSS</a>
+				<a href={resolve('/rss.xml')}>{ui.footer.rss}</a>
 				<a href="https://x.com" target="_blank">X</a>
 				<a href="https://github.com" target="_blank">GitHub</a>
 			</div>
@@ -98,4 +161,11 @@
 	</footer>
 </div>
 
-<SearchModal isOpen={isSearchOpen} onClose={() => { isSearchOpen = false; }} />
+<SearchModal
+	isOpen={isSearchOpen}
+	locale={routeLocale}
+	{ui}
+	onClose={() => {
+		isSearchOpen = false;
+	}}
+/>

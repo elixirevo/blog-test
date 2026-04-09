@@ -3,7 +3,7 @@
 	import { getUiCopy } from '$lib/i18n';
 	import { getSiteConfig } from '$lib/site';
 
-	const locale = 'ko' as const;
+	const locale = 'en' as const;
 	const site = getSiteConfig(locale);
 	const ui = getUiCopy(locale);
 </script>

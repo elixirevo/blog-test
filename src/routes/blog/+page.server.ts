@@ -1,7 +1,3 @@
-import { siteConfig } from '$lib/site';
-import { getAllPosts } from '$lib/server/content';
+import { loadPostListPage } from '$lib/server/post-loaders';
 
-export const load = () => ({
-	posts: getAllPosts(),
-	site: siteConfig
-});
+export const load = () => loadPostListPage('ko');

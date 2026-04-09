@@ -31,6 +31,19 @@ const config = {
 			pages: 'build',
 			assets: 'build'
 		}),
+		prerender: {
+			handleUnseenRoutes: ({ routes, message }) => {
+				const allowedRoutes = new Set(['/en/blog/[slug]']);
+				const unexpectedRoutes = routes.filter((route) => !allowedRoutes.has(route));
+
+				if (unexpectedRoutes.length === 0) {
+					console.warn(message);
+					return;
+				}
+
+				throw new Error(message);
+			}
+		},
 		paths: {
 			base
 		}

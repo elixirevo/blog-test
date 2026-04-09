@@ -1,17 +1,25 @@
 import matter from 'gray-matter';
 import { marked } from 'marked';
-import { siteConfig } from '$lib/site';
+import type { Locale } from '$lib/i18n';
+import { getSiteConfig } from '$lib/site';
 
 marked.use({
 	gfm: true,
 	breaks: false
 });
 
-const postFiles = import.meta.glob('/src/content/posts/*.md', {
-	eager: true,
-	import: 'default',
-	query: '?raw'
-}) as Record<string, string>;
+const postFilesByLocale: Record<Locale, Record<string, string>> = {
+	ko: import.meta.glob('/src/content/posts/*.md', {
+		eager: true,
+		import: 'default',
+		query: '?raw'
+	}) as Record<string, string>,
+	en: import.meta.glob('/src/content/translations/en/posts/*.md', {
+		eager: true,
+		import: 'default',
+		query: '?raw'
+	}) as Record<string, string>
+};
 
 type Frontmatter = {
 	title?: string;
@@ -20,9 +28,15 @@ type Frontmatter = {
 	published?: boolean;
 	category?: string;
 	cover?: string;
+	locale?: string;
+	sourceHash?: string;
+	sourcePath?: string;
+	translationSource?: string;
+	translatedAt?: string;
 };
 
 type ParsedPost = {
+	locale: Locale;
 	slug: string;
 	title: string;
 	description: string;
@@ -39,12 +53,6 @@ type ParsedPost = {
 
 export type BlogPost = Omit<ParsedPost, 'published' | 'timestamp'>;
 export type PostSummary = Omit<ParsedPost, 'html' | 'published' | 'timestamp'>;
-
-const formatter = new Intl.DateTimeFormat(siteConfig.language, {
-	year: 'numeric',
-	month: 'long',
-	day: 'numeric'
-});
 
 const toSlug = (path: string) => path.split('/').at(-1)?.replace(/\.md$/, '') ?? path;
 
@@ -81,7 +89,14 @@ const createExcerpt = (description: string, content: string) => {
 	return `${stripMarkdown(content).slice(0, 160)}...`;
 };
 
-const parsePost = (path: string, source: string): ParsedPost => {
+const formatDate = (locale: Locale, timestamp: number) =>
+	new Intl.DateTimeFormat(getSiteConfig(locale).language, {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	}).format(new Date(timestamp));
+
+const parsePost = (path: string, source: string, locale: Locale): ParsedPost => {
 	const slug = toSlug(path);
 	const { content, data } = matter(source);
 	const frontmatter = data as Frontmatter;
@@ -97,12 +112,13 @@ const parsePost = (path: string, source: string): ParsedPost => {
 	}
 
 	return {
+		locale,
 		slug,
 		title: frontmatter.title,
 		description: frontmatter.description,
 		date: frontmatter.date,
 		published: frontmatter.published !== false,
-		formattedDate: formatter.format(new Date(timestamp)),
+		formattedDate: formatDate(locale, timestamp),
 		readingTime: estimateReadingTime(content),
 		category: frontmatter.category?.trim() || 'Notes',
 		cover: normalizeCover(frontmatter.cover),
@@ -112,12 +128,19 @@ const parsePost = (path: string, source: string): ParsedPost => {
 	};
 };
 
-const posts = Object.entries(postFiles)
-	.map(([path, source]) => parsePost(path, source))
-	.filter(({ published }) => published)
-	.sort((left, right) => right.timestamp - left.timestamp);
+const postsByLocale: Record<Locale, ParsedPost[]> = {
+	ko: Object.entries(postFilesByLocale.ko)
+		.map(([path, source]) => parsePost(path, source, 'ko'))
+		.filter(({ published }) => published)
+		.sort((left, right) => right.timestamp - left.timestamp),
+	en: Object.entries(postFilesByLocale.en)
+		.map(([path, source]) => parsePost(path, source, 'en'))
+		.filter(({ published }) => published)
+		.sort((left, right) => right.timestamp - left.timestamp)
+};
 
 const toSummary = (post: ParsedPost): PostSummary => ({
+	locale: post.locale,
 	slug: post.slug,
 	title: post.title,
 	description: post.description,
@@ -134,10 +157,11 @@ const toBlogPost = (post: ParsedPost): BlogPost => ({
 	html: post.html
 });
 
-export const getAllPosts = (): PostSummary[] => posts.map(toSummary);
+export const getAllPosts = (locale: Locale = 'ko'): PostSummary[] =>
+	postsByLocale[locale].map(toSummary);
 
-export const getPost = (slug: string): BlogPost | undefined => {
-	const post = posts.find((entry) => entry.slug === slug);
+export const getPost = (slug: string, locale: Locale = 'ko'): BlogPost | undefined => {
+	const post = postsByLocale[locale].find((entry) => entry.slug === slug);
 
 	if (!post) {
 		return undefined;

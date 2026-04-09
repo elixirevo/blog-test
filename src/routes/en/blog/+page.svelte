@@ -6,7 +6,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const locale = 'ko' as const;
+	const locale = 'en' as const;
 	const site = getSiteConfig(locale);
 	const ui = getUiCopy(locale);
 </script>
