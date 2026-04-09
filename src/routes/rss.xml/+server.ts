@@ -24,7 +24,7 @@ const toAbsoluteUrl = (path: string) =>
 
 export const GET = () => {
 	const posts = getAllPosts('ko');
-	const channelLink = toAbsoluteUrl('/blog/');
+	const channelLink = toAbsoluteUrl('/');
 	const feedLink = toAbsoluteUrl('/rss.xml');
 	const lastBuildDate = posts[0]?.date ?? new Date().toISOString();
 

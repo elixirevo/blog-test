@@ -13,12 +13,6 @@ export type UiCopy = {
 		emptyState: string;
 		viewAll: string;
 	};
-	archive: {
-		eyebrow: string;
-		title: string;
-		description: string;
-		readArticle: string;
-	};
 	article: {
 		backToArchive: string;
 		continueReading: string;
@@ -65,13 +59,6 @@ const uiCopy: Record<Locale, UiCopy> = {
 			emptyState: '아직 이 섹션에는 글이 없습니다.',
 			viewAll: '전체 보기'
 		},
-		archive: {
-			eyebrow: 'Archive',
-			title: 'All posts',
-			description:
-				'GitHub Pages에 prerender되는 전체 포스트 목록입니다. Pages CMS에서 새 글을 추가하면 번역 생성 후 다음 배포에서 자동 반영됩니다.',
-			readArticle: '글 읽기'
-		},
 		article: {
 			backToArchive: '아카이브로 돌아가기',
 			continueReading: 'Continue reading',
@@ -115,13 +102,6 @@ const uiCopy: Record<Locale, UiCopy> = {
 			allCategory: 'All',
 			emptyState: 'No entries in this section yet.',
 			viewAll: 'View all'
-		},
-		archive: {
-			eyebrow: 'Archive',
-			title: 'All posts',
-			description:
-				'This is the full translated archive prerendered for GitHub Pages. Posts authored in Pages CMS are translated automatically before deployment.',
-			readArticle: 'Read article'
 		},
 		article: {
 			backToArchive: 'Back to archive',

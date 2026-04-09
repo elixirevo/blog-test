@@ -1,3 +1,6 @@
-import { loadPostListPage } from '$lib/server/post-loaders';
+import { redirect } from '@sveltejs/kit';
+import { resolve } from '$app/paths';
 
-export const load = () => loadPostListPage('en');
+export const load = () => {
+	throw redirect(308, resolve('/en'));
+};
