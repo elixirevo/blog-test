@@ -39,11 +39,7 @@ content:
         type: boolean
       - name: category
         label: Category
-        type: select
-        options:
-          values: [Essays, Technical, History, Archive, Notes]
-          creatable: true
-          placeholder: Select or create a category
+        type: string
       - name: cover
         label: Cover image
         type: image
