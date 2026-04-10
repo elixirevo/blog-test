@@ -7,11 +7,10 @@ category: Technical
 locale: en
 sourcePath: src/content/posts/2026-04-09-ai-spend-test.md
 sourceHash: b9155838ca8c982b261ab13b2a50767f542f23f852f3da2605e1a8918498c517
-translationSchemaVersion: markdown-xml-v1
+translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
-translatedAt: '2026-04-10T00:44:36.401Z'
+translatedAt: '2026-04-10T02:16:31.298Z'
 ---
-
 # AI Spending Coach Service Proposal
 
 Working Title: **Money Leak Coach**
@@ -29,7 +28,7 @@ Working Title: **Money Leak Coach**
 Although users can view their credit card statements and spending history, they frequently encounter the following issues:
 
 - With the increase in subscriptions, it’s hard to see at a glance which ones are on auto-pay.
-- Even when **small, recurring expenses**—such as coffee, food delivery, transportation, and shopping—accumulate, it’s hard to feel the impact.
+- Even when **small, recurring expenses**—such as coffee, food delivery, transportation, and shopping—accumulate, users don’t really feel the impact.
 - When asking, “Why am I short on money this month?” they can see the numbers but cannot **interpret the cause**.
 - Even when setting a budget goal, users often veer off track; there is a lack of a **warning/feedback system** to catch this in advance.
 
@@ -41,9 +40,10 @@ To solve these problems, this service reorganizes users’ spending not just int
 
 This service has four goals.
 
-1. **Automatic Detection of Recurring Spending Patterns** It automatically identifies recurring payments, small recurring expenses, spending concentrated in specific times or days of the week, and sudden spikes in specific categories.
+1. **Automatic Detection of Recurring Spending Patterns**
+It automatically identifies recurring payments, small-amount recurring transactions, spending concentrated in specific times or days of the week, and sudden spikes in specific categories.
 
-2. Interpreting Spending Causes Instead of simply stating, “Dining out expenses increased this month,” it explains the context, such as, “With more overtime, late-night delivery orders on weekdays increased, and combined with dining out on weekends, spending accumulated.”
+2. Interpreting Spending Causes Instead of a simple statement like “Dining out expenses increased this month,” it explains the context, such as “With more overtime, weeknight delivery orders increased, and combined with weekend dining out, spending accumulated.”
 
 3. **Providing Actionable Guidance** Instead of simply saying “Cut back,” it offers actionable steps such as “This subscription is a candidate for cancellation,” “Set a delivery budget cap,” “Take on a ‘no-spend’ challenge twice a week,” or “Your current card benefits don’t match your spending habits.”
 
@@ -60,7 +60,7 @@ Working professionals in their 20s–40s / Freelancers / Single-person household
 ### Common Characteristics
 
 - Hold at least two credit cards and use multiple subscription services
-- Can’t quite figure out why they always feel short on money even though their paycheck comes in
+- Can’t quite figure out why they’re always short on money even though their paycheck comes in
 - Find it difficult to keep a consistent budget, and instead want **automatic analysis**
 - Need **interpretation and advice** more than just numbers
 
@@ -97,13 +97,14 @@ Examples of what to detect include:
 import { json } from '@sveltejs/kit';
 
 export async function GET({ url }) {
-	const users = await db.getUsers();
-	return json(users);
+  const users = await db.getUsers();
+  return json(users);
 }
 
 export async function POST({ request }) {
-	const data = await request.json();
-	const user = await db.createUser(data);
-	return json(user, { status: 201 });
+  const data = await request.json();
+  const user = await db.createUser(data);
+  return json(user, { status: 201 });
 }
 ```
+

@@ -9,14 +9,13 @@ category: Essays
 locale: en
 sourcePath: src/content/posts/2026-04-08-pages-cms-workflow.md
 sourceHash: 6f627dcf99f78732704680f0a339a24832165bbb8de899ba0e20be971be92dc6
-translationSchemaVersion: markdown-xml-v1
+translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
-translatedAt: '2026-04-10T00:44:35.028Z'
+translatedAt: '2026-04-10T02:16:29.921Z'
 ---
-
 Pages CMS operates by **directly editing files in the GitHub repository** without using a separate database.
 
-In this project, the root file `.pages.yml` connects the following two elements:
+In this project, the root file ``.pages.yml`` connects the following two elements:
 
 ## 1. Post Collection
 

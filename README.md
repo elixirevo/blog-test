@@ -85,9 +85,10 @@ SITE_BASE_PATH=blog bun run build
 2. GitHub Actions가 `bun run translate:posts`를 실행합니다.
 3. 영문 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
 4. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
-5. DeepL 요청에는 제목과 문단 시작을 자연스러운 영어 대문자 규칙에 맞추라는 custom instruction도 포함됩니다.
-6. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
-7. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
+5. frontmatter `date`는 DeepL에 보내지지 않고 원문 값을 그대로 복사하므로 게시 시각까지 유지됩니다.
+6. DeepL 요청에는 제목과 문단 시작을 자연스러운 영어 대문자 규칙에 맞추라는 custom instruction도 포함됩니다.
+7. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
+8. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
 
 ## Release workflow
 

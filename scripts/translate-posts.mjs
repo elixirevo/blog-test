@@ -25,7 +25,7 @@ const defaultApiUrl = (() => {
 
 const translateEndpoint = `${defaultApiUrl}/v2/translate`;
 const translationChunkLimit = 20_000;
-const translationSchemaVersion = 'markdown-xml-v1';
+const translationSchemaVersion = 'markdown-xml-v2';
 const plainTextCustomInstructions = [
 	'Capitalize the first letter of titles and paragraph openings when natural in English.',
 	'Use standard English capitalization for headings and the start of body paragraphs.'
@@ -49,6 +49,21 @@ const formatFrontmatterDate = (value) => {
 	}
 
 	return '';
+};
+
+const extractRawFrontmatterField = (source, fieldName) => {
+	const frontmatterMatch = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+	if (!frontmatterMatch) {
+		return null;
+	}
+
+	const pattern = new RegExp(`^${fieldName}:\\s*(.+)$`, 'm');
+	const fieldMatch = frontmatterMatch[1].match(pattern);
+	if (!fieldMatch) {
+		return null;
+	}
+
+	return fieldMatch[1].trim().replace(/^['"]|['"]$/g, '');
 };
 
 const toPosixPath = (value) => value.split(path.sep).join('/');
@@ -603,7 +618,7 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 	const { data, content } = matter(sourceRaw);
 	const title = typeof data.title === 'string' ? data.title.trim() : '';
 	const description = typeof data.description === 'string' ? data.description.trim() : '';
-	const date = formatFrontmatterDate(data.date);
+	const date = extractRawFrontmatterField(sourceRaw, 'date') ?? formatFrontmatterDate(data.date);
 
 	if (title === '' || description === '' || date === '') {
 		throw new Error(
