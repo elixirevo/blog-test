@@ -75,7 +75,7 @@ SITE_BASE_PATH=blog bun run build
 
 - 새 글 파일명: `YYYY-MM-DD-title.md`
 - 업로드 파일명: safe slug로 정규화
-- 카테고리: 드롭다운에서 선택하거나 새 값을 직접 입력 가능하며, 저장 후 워크플로가 옵션 목록과 `src/content/categories`를 동기화
+- 카테고리: `Categories` 컬렉션에서 먼저 생성한 뒤 게시글에서 선택
 - 발행일: 초 단위까지 포함한 datetime 입력
 - 글 목록: 최신 `date` 기준으로 기본 정렬
 
