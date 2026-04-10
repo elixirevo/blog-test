@@ -163,15 +163,20 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 	};
 };
 
+const comparePostsByPublishTime = (left: ParsedPost, right: ParsedPost) =>
+	right.timestamp - left.timestamp ||
+	right.date.localeCompare(left.date) ||
+	right.slug.localeCompare(left.slug);
+
 const postsByLocale: Record<Locale, ParsedPost[]> = {
 	ko: Object.entries(postFilesByLocale.ko)
 		.map(([path, source]) => parsePost(path, source, 'ko'))
 		.filter(({ published }) => published)
-		.sort((left, right) => right.timestamp - left.timestamp),
+		.sort(comparePostsByPublishTime),
 	en: Object.entries(postFilesByLocale.en)
 		.map(([path, source]) => parsePost(path, source, 'en'))
 		.filter(({ published }) => published)
-		.sort((left, right) => right.timestamp - left.timestamp)
+		.sort(comparePostsByPublishTime)
 };
 
 const toSummary = (post: ParsedPost): PostSummary => ({

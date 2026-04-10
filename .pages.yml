@@ -31,7 +31,9 @@ content:
         label: Publish date
         type: date
         options:
-          format: yyyy-MM-dd
+          time: true
+          format: "yyyy-MM-dd'T'HH:mm:ss"
+          step: 1
       - name: published
         label: Published
         type: boolean

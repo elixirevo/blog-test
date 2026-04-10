@@ -76,7 +76,8 @@ SITE_BASE_PATH=blog bun run build
 - 새 글 파일명: `YYYY-MM-DD-title.md`
 - 업로드 파일명: safe slug로 정규화
 - 카테고리: 기본 옵션 제공 + 새 카테고리 생성 가능
-- 글 목록: `date desc` 기준으로 기본 정렬
+- 발행일: 초 단위까지 포함한 datetime 입력
+- 글 목록: 최신 `date` 기준으로 기본 정렬
 
 ## Translation workflow
 
