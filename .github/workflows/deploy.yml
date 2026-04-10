@@ -67,23 +67,26 @@ jobs:
 
           echo "use_translations=$value" >> "$GITHUB_OUTPUT"
 
+      - name: Sync category options
+        run: bun run sync:categories
+
       - name: Translate Korean posts to English
         run: bun run translate:posts
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           DEEPL_API_URL: ${{ secrets.DEEPL_API_URL }}
 
-      - name: Commit translated posts
+      - name: Commit generated content
         run: |
-          if [ -z "$(git status --porcelain -- src/content/translations/en/posts)" ]; then
-            echo "No translated content changes to commit"
+          if [ -z "$(git status --porcelain -- .pages.yml src/content/categories src/content/translations/en/posts)" ]; then
+            echo "No generated content changes to commit"
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/content/translations/en/posts
-          git commit -m "chore(i18n): sync English translations [skip ci]"
+          git add .pages.yml src/content/categories src/content/translations/en/posts
+          git commit -m "chore(content): sync generated metadata [skip ci]"
           git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Build site

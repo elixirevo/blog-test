@@ -39,12 +39,17 @@ content:
         type: boolean
       - name: category
         label: Category
-        type: reference
+        type: select
         options:
-          collection: categories
-          search: name
-          value: '{name}'
-          label: '{name}'
+          values:
+            - 'Archive'
+            - 'category test'
+            - 'Essays'
+            - 'History'
+            - 'Notes'
+            - 'Technical'
+          creatable: true
+          placeholder: Select or create a category
       - name: cover
         label: Cover image
         type: image
