@@ -1,3 +1,3 @@
 ---
-name: Notes
+title: Notes
 ---

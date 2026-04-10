@@ -1,3 +1,3 @@
 ---
-name: Test
+title: Test
 ---

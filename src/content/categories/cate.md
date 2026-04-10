@@ -1,3 +1,3 @@
 ---
-name: cate
+title: cate
 ---

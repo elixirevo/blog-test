@@ -1,3 +1,3 @@
 ---
-name: 'category test'
+title: 'category test'
 ---

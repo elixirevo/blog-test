@@ -42,9 +42,9 @@ content:
         type: reference
         options:
           collection: categories
-          search: primary
-          value: '{primary}'
-          label: '{primary}'
+          search: title
+          value: '{title}'
+          label: '{title}'
       - name: cover
         label: Cover image
         type: image
@@ -62,19 +62,19 @@ content:
     type: collection
     path: src/content/categories
     filename:
-      template: '{name}.md'
+      template: '{title}.md'
       field: create
     view:
-      primary: name
-      fields: [name]
-      sort: [name]
-      search: [name]
+      primary: title
+      fields: [title]
+      sort: [title]
+      search: [title]
       default:
-        sort: name
+        sort: title
         order: asc
     fields:
-      - name: name
-        label: Name
+      - name: title
+        label: Title
         type: string
   - name: site
     label: Site settings
