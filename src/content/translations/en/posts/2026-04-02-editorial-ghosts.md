@@ -1,18 +1,19 @@
 ---
-title: 'Editorial ghosts: Why understated curation often earns more trust'
+title: 'Editorial ghosts: Why understated curation often builds more trust'
 description: >-
-  it covers cases where less visible traces of editing actually create more
-  trust.
+  This section discusses cases where editing traces that are not immediately
+  apparent actually foster greater trust.
 date: '2026-04-02'
 published: true
 category: Archive
 locale: en
 sourcePath: src/content/posts/2026-04-02-editorial-ghosts.md
 sourceHash: 9282b4615e848607c074d37587fbbd3b336e26404950948ad94ff9b0cdd9ae0f
+translationSchemaVersion: markdown-xml-v1
 translationSource: deepl
-translatedAt: '2026-04-09T00:36:30.118Z'
+translatedAt: '2026-04-10T00:44:29.779Z'
 ---
 
-a well-crafted main page makes more thoughtful decisions about what to leave out than what to show more of.
+A well-designed homepage focuses more on deciding what to leave out than what to include.
 
-quiet curation puts the spotlight on the article rather than the platform, which in turn increases trust.
+Subtle curation keeps the focus on the content rather than the platform, which in turn builds greater trust.

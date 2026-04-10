@@ -1,121 +1,109 @@
 ---
-title: AI Spend Coach Service Brief
-description: AI Spend Coach Service Brief
+title: AI Spending Coach Service Proposal
+description: AI Spending Coach Service Proposal
 date: '2026-04-09'
 published: true
 category: Technical
 locale: en
 sourcePath: src/content/posts/2026-04-09-ai-spend-test.md
 sourceHash: b9155838ca8c982b261ab13b2a50767f542f23f852f3da2605e1a8918498c517
+translationSchemaVersion: markdown-xml-v1
 translationSource: deepl
-translatedAt: '2026-04-09T06:04:46.367Z'
+translatedAt: '2026-04-10T00:44:36.401Z'
 ---
-# AI Spend Coach Service Brief
 
-working title: **Money Leak Coach*
+# AI Spending Coach Service Proposal
+
+Working Title: **Money Leak Coach**
 
 ## 1. Service Overview
 
-**One Line Definition**
-lLM-based spending coaching service that analyzes your card, subscription, and spending data to **find recurring spending patterns**, **interpret why you're leaking money**, and provide **action guides and reminders to take action**.
+**One-Line Definition** An LLM-based spending coaching service that analyzes credit card, subscription, and spending data to **identify recurring spending patterns**, **interpret why money is leaking**, and provide **actionable guidance and reminders**.
 
-**Service Core Value**
-whereas traditional pocketbooks only show you "how much you spent", this service tells you "why you spent it" and "what you need to change now".  
-in other words, we aim to be a behavioral financial assistant, not just a record-keeping service.
+**Core Service Value** While traditional household ledgers merely show “how much was spent,” this service explains “**why you ended up spending that much**” and “**what you need to change right now**.” In other words, it aims to be a **behavior-changing financial assistant**, not just a simple tracking service.
 
 ---
 
-## 2. Define the problem
+## 2. Problem Definition
 
-users can see their card statements and spending history, but in practice, they often experience the following issues
+Although users can view their credit card statements and spending history, they frequently encounter the following issues:
 
-- they have a lot of subscriptions, and it's hard to see at a glance what's on auto-pay.
-- small recurring expenses like coffee, delivery, travel, and shopping don't add up.
-- "You can see the numbers but can't understand why you're running out of money this month.
-- you set a budget, but you get off track, and there's no alert/feedback system to catch you.
+- With the increase in subscriptions, it’s hard to see at a glance which ones are on auto-pay.
+- Even when **small, recurring expenses**—such as coffee, food delivery, transportation, and shopping—accumulate, it’s hard to feel the impact.
+- When asking, “Why am I short on money this month?” they can see the numbers but cannot **interpret the cause**.
+- Even when setting a budget goal, users often veer off track; there is a lack of a **warning/feedback system** to catch this in advance.
 
-to solve this problem, the service reorganizes your spending into patterns, causes, and behaviors, not just categories.
-
---->
-
-## 3. Service Goals
-
-this service has four goals
-
-1. **Automatically detect recurring spending patterns
-automatically detect recurring subscriptions, small recurring purchases, time-of-day/day-of-week spending, category spikes, etc.
-
-2. **Interpret spending drivers
-  instead of just saying, "We're spending more on dining out this month."
-   "I've been working more nights, which has led to an increase in weeknight delivery spending, which has led to an increase in weekend dining out, which has led to an accumulation of spending."
-
-3. **Provide a call to action
-  instead of "cut back"
-   "This subscription is a candidate for cancelation," "Set a cap on your delivery budget," "Challenge yourself to go zero twice a week," "Mismatch your current card offers," etc.
-
-4. **Provide real-time alerts and progress feedback
-  alert you when you're about to overspend and provide easy-to-understand feedback on your current progress against your goals.
+To solve these problems, this service reorganizes users’ spending not just into simple categories, but into units of **patterns, causes, and actions**.
 
 ---
 
-## 4
+## 3. Service Objectives
+
+This service has four goals.
+
+1. **Automatic Detection of Recurring Spending Patterns** It automatically identifies recurring payments, small recurring expenses, spending concentrated in specific times or days of the week, and sudden spikes in specific categories.
+
+2. Interpreting Spending Causes Instead of simply stating, “Dining out expenses increased this month,” it explains the context, such as, “With more overtime, late-night delivery orders on weekdays increased, and combined with dining out on weekends, spending accumulated.”
+
+3. **Providing Actionable Guidance** Instead of simply saying “Cut back,” it offers actionable steps such as “This subscription is a candidate for cancellation,” “Set a delivery budget cap,” “Take on a ‘no-spend’ challenge twice a week,” or “Your current card benefits don’t match your spending habits.”
+
+4. **Providing Real-Time Alerts and Progress Feedback** It issues early warnings when signs of overspending appear and provides easy-to-understand feedback on current progress relative to goals.
+
+---
+
+## 4. Target Users
 
 ### Primary Target
 
-20-40 year olds / freelancers / single-person households
+Working professionals in their 20s–40s / Freelancers / Single-person households
 
-### Common characteristics
+### Common Characteristics
 
-- have 2 or more credit cards, multiple subscription services
-- paychecks come in, but you don't know "why there's always not enough"
-- find it hard to keep a consistent budget and want **automated analysis** instead
-- you need **interpretation and advice** more than numbers
+- Hold at least two credit cards and use multiple subscription services
+- Can’t quite figure out why they always feel short on money even though their paycheck comes in
+- Find it difficult to keep a consistent budget, and instead want **automatic analysis**
+- Need **interpretation and advice** more than just numbers
 
-### Representative personas
+### Representative Persona
 
-"OTT, music, cloud, coffee, delivery, taxi, shopping, and the list goes on and on,
-but don't know exactly where the money is coming from and are anxious at the end of the month."
+“Money keeps trickling out for OTT, music, cloud storage, coffee, delivery, taxis, and shopping, but I don’t know exactly where the money is leaking, and I feel anxious every month-end”
 
----John
+---
 
-## 5. Core Features
+## 5. Key Features
 
-## 5-1. Recurring spending pattern detection
+## 5-1. Detection of Recurring Spending Patterns
 
-examples of detection targets are as follows
+Examples of what to detect include:
 
-- **Recurring subscription patterns: OTT, music, productivity tools, cloud, memberships, etc
-- **Hidden recurring spend: Spending that occurs on similar days/time periods each week
-- **Small leakage patterns: small but frequent expenses like coffee, convenience stores, delivery, taxis, etc
-- **Abnormal spike patterns: Spending in certain categories is higher than usual
-- **Duplicate payments/inefficient subscriptions: simultaneous payments for similar services, subscriptions that are rarely used
-- **Habitual spending patterns: spending at night, stressful shopping, overspending right after payday, etc
+- **Recurring Subscription Patterns**: OTT, music, productivity tools, cloud services, memberships, etc.
+- **Hidden Recurring Expenses**: Spending that occurs on similar days and at similar times each week
+- **Small-Amount Leakage Patterns**: Frequent, small-scale expenses such as coffee, convenience stores, food delivery, and taxis
+- **Abnormal Increase/Decrease Patterns**: A sudden surge in spending in a specific category compared to usual
+- **Duplicate Payments/Inefficient Subscriptions**: Simultaneous payments for similar services, subscriptions that are rarely used
+- **Habitual Spending Patterns**: Late-night spending, stress shopping, overspending immediately after payday
 
-### Example of feature results
+### Example of Feature Results
 
-- "Recurring Friday night delivery spending over the last 8 weeks"
-- "Spending at cafes increased 42% compared to the last 3-month average"
-- "Maintaining 3 similar video subscriptions at the same time"
-- "Spending in the first 5 days of the month accounts for 37% of the total budget"
+- “Repeated delivery spending on Friday nights over the past 8 weeks”
+- “Café spending has increased by 42% compared to the average over the past 3 months”
+- “Currently maintaining three similar video subscriptions simultaneously”
+- “Spending within the first 5 days of the month accounts for 37% of the total budget”
 
---- and
+---
 
 ```ts
 // src/routes/api/users/+server.ts
 import { json } from '@sveltejs/kit';
 
 export async function GET({ url }) {
-  const users = await db.getUsers();
-  return json(users);
+	const users = await db.getUsers();
+	return json(users);
 }
 
 export async function POST({ request }) {
-  const data = await request.json();
-  const user = await db.createUser(data);
-  return json(user, { status: 201 });
+	const data = await request.json();
+	const user = await db.createUser(data);
+	return json(user, { status: 201 });
 }
 ```
-
-
-
-&nbsp;

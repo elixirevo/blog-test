@@ -25,9 +25,16 @@ const defaultApiUrl = (() => {
 
 const translateEndpoint = `${defaultApiUrl}/v2/translate`;
 const translationChunkLimit = 20_000;
-const customInstructions = [
+const translationSchemaVersion = 'markdown-xml-v1';
+const plainTextCustomInstructions = [
 	'Capitalize the first letter of titles and paragraph openings when natural in English.',
 	'Use standard English capitalization for headings and the start of body paragraphs.'
+];
+const structuredMarkdownInstructions = [
+	...plainTextCustomInstructions,
+	'Preserve the XML tag structure exactly and translate only the text content inside each tag.',
+	'Keep Markdown semantics intact for headings, lists, paragraphs, and block quotes.',
+	'Never translate or rewrite code blocks, inline code, commands, file paths, URLs, or placeholder tokens.'
 ];
 
 const hashContent = (value) => createHash('sha256').update(value).digest('hex');
@@ -45,6 +52,32 @@ const formatFrontmatterDate = (value) => {
 };
 
 const toPosixPath = (value) => value.split(path.sep).join('/');
+
+const escapeXml = (value) =>
+	value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&apos;');
+
+const unescapeXml = (value) =>
+	value.replace(/&(amp|lt|gt|quot|apos);/g, (entity) => {
+		switch (entity) {
+			case '&amp;':
+				return '&';
+			case '&lt;':
+				return '<';
+			case '&gt;':
+				return '>';
+			case '&quot;':
+				return '"';
+			case '&apos;':
+				return "'";
+			default:
+				return entity;
+		}
+	});
 
 const listMarkdownFiles = async (dir) => {
 	try {
@@ -68,13 +101,16 @@ const inferTranslationState = async (targetFile) => {
 		const { data } = matter(raw);
 		return {
 			exists: true,
-			sourceHash: typeof data.sourceHash === 'string' ? data.sourceHash : null
+			sourceHash: typeof data.sourceHash === 'string' ? data.sourceHash : null,
+			schemaVersion:
+				typeof data.translationSchemaVersion === 'string' ? data.translationSchemaVersion : null
 		};
 	} catch (error) {
 		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
 			return {
 				exists: false,
-				sourceHash: null
+				sourceHash: null,
+				schemaVersion: null
 			};
 		}
 
@@ -83,7 +119,80 @@ const inferTranslationState = async (targetFile) => {
 };
 
 const splitMarkdownForTranslation = (content) => {
-	const parts = content.split(/(\n{2,})/);
+	const lines = content.replace(/\r\n/g, '\n').split('\n');
+	const parts = [];
+	let currentLines = [];
+	let activeFence = null;
+
+	const flushCurrentLines = () => {
+		if (currentLines.length === 0) {
+			return;
+		}
+
+		parts.push(currentLines.join('\n'));
+		currentLines = [];
+	};
+
+	const getFenceToken = (line) => {
+		const trimmed = line.trimStart();
+		if (!trimmed.startsWith('```') && !trimmed.startsWith('~~~')) {
+			return null;
+		}
+
+		const marker = trimmed[0];
+		let length = 0;
+		while (trimmed[length] === marker) {
+			length += 1;
+		}
+
+		return length >= 3 ? marker.repeat(length) : null;
+	};
+
+	const isFenceClosingLine = (line, fenceToken) => {
+		if (!fenceToken) {
+			return false;
+		}
+
+		const trimmed = line.trimStart();
+		if (!trimmed.startsWith(fenceToken[0])) {
+			return false;
+		}
+
+		let length = 0;
+		while (trimmed[length] === fenceToken[0]) {
+			length += 1;
+		}
+
+		return length >= fenceToken.length;
+	};
+
+	for (const line of lines) {
+		const fenceToken = getFenceToken(line);
+
+		if (activeFence) {
+			currentLines.push(line);
+			if (isFenceClosingLine(line, activeFence)) {
+				activeFence = null;
+			}
+			continue;
+		}
+
+		if (fenceToken) {
+			currentLines.push(line);
+			activeFence = fenceToken;
+			continue;
+		}
+
+		if (line.trim() === '') {
+			flushCurrentLines();
+			continue;
+		}
+
+		currentLines.push(line);
+	}
+
+	flushCurrentLines();
+
 	const chunks = [];
 	let current = '';
 
@@ -101,13 +210,14 @@ const splitMarkdownForTranslation = (content) => {
 			continue;
 		}
 
-		if (current.length + part.length > translationChunkLimit && current !== '') {
+		const nextValue = current === '' ? part : `${current}\n\n${part}`;
+		if (nextValue.length > translationChunkLimit && current !== '') {
 			chunks.push(current);
 			current = part;
 			continue;
 		}
 
-		current += part;
+		current = nextValue;
 	}
 
 	if (current !== '') {
@@ -117,7 +227,7 @@ const splitMarkdownForTranslation = (content) => {
 	return chunks.length > 0 ? chunks : [''];
 };
 
-const protectMarkdown = (content) => {
+const protectMarkdownInline = (content) => {
 	let tokenIndex = 0;
 	const replacements = [];
 
@@ -130,7 +240,6 @@ const protectMarkdown = (content) => {
 
 	let nextContent = content;
 
-	nextContent = nextContent.replace(/```[\s\S]*?```/g, (match) => createToken(match));
 	nextContent = nextContent.replace(/`[^`\n]+`/g, (match) => createToken(match));
 	nextContent = nextContent.replace(/<!--[\s\S]*?-->/g, (match) => createToken(match));
 	nextContent = nextContent.replace(
@@ -150,7 +259,316 @@ const protectMarkdown = (content) => {
 	};
 };
 
-const translateTexts = async (texts) => {
+const matchHeadingLine = (line) => line.match(/^(#{1,6})[ \t]+(.*)$/);
+const matchUnorderedListLine = (line) => line.match(/^(\s*[-*+]\s+)(.*)$/);
+const matchOrderedListLine = (line) => line.match(/^(\s*\d+[.)]\s+)(.*)$/);
+const matchQuoteLine = (line) => line.match(/^(\s*>+\s?)(.*)$/);
+const isHorizontalRule = (line) => /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(line);
+
+const isStructuralMarkdownLine = (line) =>
+	matchHeadingLine(line) ||
+	matchUnorderedListLine(line) ||
+	matchOrderedListLine(line) ||
+	matchQuoteLine(line) ||
+	isHorizontalRule(line) ||
+	line.trimStart().startsWith('```') ||
+	line.trimStart().startsWith('~~~');
+
+const parseMarkdownChunk = (content) => {
+	const lines = content.split('\n');
+	const blocks = [];
+	let index = 0;
+
+	const collectListBlock = (matcher, type) => {
+		const items = [];
+
+		while (index < lines.length) {
+			const match = matcher(lines[index]);
+			if (!match) {
+				break;
+			}
+
+			const itemLines = [match[2]];
+			index += 1;
+
+			while (index < lines.length) {
+				if (lines[index].trim() === '') {
+					break;
+				}
+
+				if (isStructuralMarkdownLine(lines[index])) {
+					break;
+				}
+
+				itemLines.push(lines[index].trimStart());
+				index += 1;
+			}
+
+			const protectedItem = protectMarkdownInline(itemLines.join('\n'));
+			items.push({
+				prefix: match[1],
+				text: protectedItem.text,
+				restore: protectedItem.restore
+			});
+
+			if (lines[index]?.trim() === '') {
+				break;
+			}
+		}
+
+		blocks.push({ type, items });
+	};
+
+	while (index < lines.length) {
+		const line = lines[index];
+
+		if (line.trim() === '') {
+			index += 1;
+			continue;
+		}
+
+		const headingMatch = matchHeadingLine(line);
+		if (headingMatch) {
+			const protectedHeading = protectMarkdownInline(headingMatch[2]);
+			blocks.push({
+				type: 'heading',
+				prefix: `${headingMatch[1]} `,
+				text: protectedHeading.text,
+				restore: protectedHeading.restore
+			});
+			index += 1;
+			continue;
+		}
+
+		if (matchUnorderedListLine(line)) {
+			collectListBlock(matchUnorderedListLine, 'unordered-list');
+			continue;
+		}
+
+		if (matchOrderedListLine(line)) {
+			collectListBlock(matchOrderedListLine, 'ordered-list');
+			continue;
+		}
+
+		const quoteMatch = matchQuoteLine(line);
+		if (quoteMatch) {
+			const quoteLines = [];
+
+			while (index < lines.length) {
+				const nextQuoteMatch = matchQuoteLine(lines[index]);
+				if (!nextQuoteMatch) {
+					break;
+				}
+
+				const protectedQuote = protectMarkdownInline(nextQuoteMatch[2]);
+				quoteLines.push({
+					prefix: nextQuoteMatch[1],
+					text: protectedQuote.text,
+					restore: protectedQuote.restore
+				});
+				index += 1;
+			}
+
+			blocks.push({ type: 'blockquote', lines: quoteLines });
+			continue;
+		}
+
+		if (isHorizontalRule(line)) {
+			blocks.push({ type: 'raw', raw: line });
+			index += 1;
+			continue;
+		}
+
+		const trimmed = line.trimStart();
+		if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+			const codeLines = [line];
+			const marker = trimmed[0];
+			let fenceLength = 0;
+			while (trimmed[fenceLength] === marker) {
+				fenceLength += 1;
+			}
+			index += 1;
+
+			while (index < lines.length) {
+				codeLines.push(lines[index]);
+				const nextTrimmed = lines[index].trimStart();
+				let nextLength = 0;
+				while (nextTrimmed[nextLength] === marker) {
+					nextLength += 1;
+				}
+
+				index += 1;
+				if (nextLength >= fenceLength) {
+					break;
+				}
+			}
+
+			blocks.push({
+				type: 'code',
+				raw: codeLines.join('\n')
+			});
+			continue;
+		}
+
+		const paragraphLines = [line];
+		index += 1;
+
+		while (index < lines.length) {
+			if (lines[index].trim() === '') {
+				break;
+			}
+
+			if (isStructuralMarkdownLine(lines[index])) {
+				break;
+			}
+
+			paragraphLines.push(lines[index]);
+			index += 1;
+		}
+
+		const protectedParagraph = protectMarkdownInline(paragraphLines.join('\n'));
+		blocks.push({
+			type: 'paragraph',
+			text: protectedParagraph.text,
+			restore: protectedParagraph.restore
+		});
+	}
+
+	return blocks;
+};
+
+const serializeMarkdownBlocksToXml = (blocks) =>
+	`<doc>${blocks
+		.map((block) => {
+			switch (block.type) {
+				case 'heading':
+					return `<h>${escapeXml(block.text)}</h>`;
+				case 'paragraph':
+					return `<p>${escapeXml(block.text)}</p>`;
+				case 'unordered-list':
+				case 'ordered-list':
+					return `<list>${block.items.map((item) => `<li>${escapeXml(item.text)}</li>`).join('')}</list>`;
+				case 'blockquote':
+					return `<blockquote>${block.lines
+						.map((line) => `<line>${escapeXml(line.text)}</line>`)
+						.join('')}</blockquote>`;
+				case 'code':
+					return `<codeblock>${escapeXml(block.raw)}</codeblock>`;
+				case 'raw':
+					return `<rawblock>${escapeXml(block.raw)}</rawblock>`;
+				default:
+					return '';
+			}
+		})
+		.join('')}</doc>`;
+
+const consumeXmlTag = (source, tagName, startIndex = 0) => {
+	const openPattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>`, 'g');
+	openPattern.lastIndex = startIndex;
+	const openMatch = openPattern.exec(source);
+
+	if (!openMatch) {
+		throw new Error(`Expected <${tagName}> in translated XML payload`);
+	}
+
+	const contentStart = openMatch.index + openMatch[0].length;
+	const closeTag = `</${tagName}>`;
+	const closeIndex = source.indexOf(closeTag, contentStart);
+
+	if (closeIndex === -1) {
+		throw new Error(`Expected closing </${tagName}> in translated XML payload`);
+	}
+
+	return {
+		inner: source.slice(contentStart, closeIndex),
+		nextIndex: closeIndex + closeTag.length
+	};
+};
+
+const restoreMarkdownFromXml = (translatedXml, blocks) => {
+	const documentNode = consumeXmlTag(translatedXml.trim(), 'doc');
+	let cursor = 0;
+	const restoredBlocks = [];
+
+	for (const block of blocks) {
+		if (block.type === 'heading') {
+			const node = consumeXmlTag(documentNode.inner, 'h', cursor);
+			cursor = node.nextIndex;
+			restoredBlocks.push(`${block.prefix}${block.restore(unescapeXml(node.inner))}`);
+			continue;
+		}
+
+		if (block.type === 'paragraph') {
+			const node = consumeXmlTag(documentNode.inner, 'p', cursor);
+			cursor = node.nextIndex;
+			restoredBlocks.push(block.restore(unescapeXml(node.inner)));
+			continue;
+		}
+
+		if (block.type === 'unordered-list' || block.type === 'ordered-list') {
+			const listNode = consumeXmlTag(documentNode.inner, 'list', cursor);
+			cursor = listNode.nextIndex;
+			let itemCursor = 0;
+			const restoredItems = [];
+
+			for (const item of block.items) {
+				const itemNode = consumeXmlTag(listNode.inner, 'li', itemCursor);
+				itemCursor = itemNode.nextIndex;
+				restoredItems.push(`${item.prefix}${item.restore(unescapeXml(itemNode.inner))}`);
+			}
+
+			restoredBlocks.push(restoredItems.join('\n'));
+			continue;
+		}
+
+		if (block.type === 'blockquote') {
+			const blockquoteNode = consumeXmlTag(documentNode.inner, 'blockquote', cursor);
+			cursor = blockquoteNode.nextIndex;
+			let lineCursor = 0;
+			const restoredLines = [];
+
+			for (const line of block.lines) {
+				const lineNode = consumeXmlTag(blockquoteNode.inner, 'line', lineCursor);
+				lineCursor = lineNode.nextIndex;
+				restoredLines.push(`${line.prefix}${line.restore(unescapeXml(lineNode.inner))}`);
+			}
+
+			restoredBlocks.push(restoredLines.join('\n'));
+			continue;
+		}
+
+		if (block.type === 'code') {
+			const node = consumeXmlTag(documentNode.inner, 'codeblock', cursor);
+			cursor = node.nextIndex;
+			restoredBlocks.push(unescapeXml(node.inner));
+			continue;
+		}
+
+		if (block.type === 'raw') {
+			const node = consumeXmlTag(documentNode.inner, 'rawblock', cursor);
+			cursor = node.nextIndex;
+			restoredBlocks.push(unescapeXml(node.inner));
+		}
+	}
+
+	return restoredBlocks.join('\n\n');
+};
+
+const createStructuredMarkdownChunk = (content) => {
+	const blocks = parseMarkdownChunk(content);
+
+	return {
+		text: serializeMarkdownBlocksToXml(blocks),
+		restore: (translated) => restoreMarkdownFromXml(translated, blocks)
+	};
+};
+
+const translateTexts = async (texts, options = {}) => {
+	if (texts.length === 0) {
+		return [];
+	}
+
+	const { customInstructions = plainTextCustomInstructions, ...requestOptions } = options;
 	const response = await fetch(translateEndpoint, {
 		method: 'POST',
 		headers: {
@@ -163,7 +581,8 @@ const translateTexts = async (texts) => {
 			preserve_formatting: true,
 			model_type: 'quality_optimized',
 			custom_instructions: customInstructions,
-			text: texts
+			text: texts,
+			...requestOptions
 		})
 	});
 
@@ -193,20 +612,29 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 	}
 
 	const bodyChunks = splitMarkdownForTranslation(content);
-	const protectedChunks = bodyChunks.map((chunk) => protectMarkdown(chunk));
-	const translated = await translateTexts([
-		title,
-		description,
-		...protectedChunks.map((chunk) => chunk.text)
+	const structuredChunks = bodyChunks.map((chunk) => createStructuredMarkdownChunk(chunk));
+	const [translatedMeta, translatedBodyChunks] = await Promise.all([
+		translateTexts([title, description]),
+		translateTexts(
+			structuredChunks.map((chunk) => chunk.text),
+			{
+				customInstructions: structuredMarkdownInstructions,
+				tag_handling: 'xml',
+				tag_handling_version: 'v2',
+				outline_detection: false,
+				splitting_tags: ['h', 'p', 'li', 'line'],
+				ignore_tags: ['codeblock', 'rawblock']
+			}
+		)
 	]);
 
-	const translatedBody = protectedChunks
-		.map((chunk, index) => chunk.restore(translated[index + 2] ?? ''))
-		.join('');
+	const translatedBody = structuredChunks
+		.map((chunk, index) => chunk.restore(translatedBodyChunks[index] ?? chunk.text))
+		.join('\n\n');
 
 	const nextData = {
-		title: translated[0],
-		description: translated[1],
+		title: translatedMeta[0],
+		description: translatedMeta[1],
 		date,
 		published: data.published !== false,
 		category:
@@ -214,6 +642,7 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 		locale: 'en',
 		sourcePath: toPosixPath(path.relative(projectRoot, sourceFile)),
 		sourceHash,
+		translationSchemaVersion,
 		translationSource: 'deepl',
 		translatedAt: new Date().toISOString()
 	};
@@ -250,8 +679,11 @@ for (const sourceFile of sourceFiles) {
 	const sourceHash = hashContent(sourceRaw);
 	const targetFile = path.join(targetDir, path.basename(sourceFile));
 	const targetState = await inferTranslationState(targetFile);
+	const isTranslationCurrent =
+		targetState.sourceHash === sourceHash &&
+		(apiKey === '' || targetState.schemaVersion === translationSchemaVersion);
 
-	if (targetState.sourceHash === sourceHash) {
+	if (isTranslationCurrent) {
 		skippedCount += 1;
 		continue;
 	}

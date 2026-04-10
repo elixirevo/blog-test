@@ -82,10 +82,11 @@ SITE_BASE_PATH=blog bun run build
 
 1. Pages CMS에서 한국어 원문을 `src/content/posts/*.md`에 저장합니다.
 2. GitHub Actions가 `bun run translate:posts`를 실행합니다.
-3. 영문 번역본이 없거나 원문 해시가 바뀐 경우에만 DeepL을 호출합니다.
-4. DeepL 요청에는 제목과 문단 시작을 자연스러운 영어 대문자 규칙에 맞추라는 custom instruction이 포함됩니다.
-5. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
-6. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
+3. 영문 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
+4. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
+5. DeepL 요청에는 제목과 문단 시작을 자연스러운 영어 대문자 규칙에 맞추라는 custom instruction도 포함됩니다.
+6. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
+7. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
 
 ## Release workflow
 

@@ -1,42 +1,40 @@
 ---
-title: SvelteKit blog deploying to GitHub Pages
+title: A SvelteKit blog deployed to GitHub Pages
 description: >-
-  the adapter-static and prerender settings organize the basic structure of
-  putting SvelteKit on GitHub Pages.
+  Here is an overview of the basic structure for deploying SvelteKit to GitHub
+  Pages using the `adapter-static` and `prerender` settings.
 date: '2026-04-08'
 published: true
 category: Technical
 locale: en
 sourcePath: src/content/posts/2026-04-08-github-pages-first-post.md
 sourceHash: fb7606d5741efc2a33de6fb86862ddc67b1e5da54407d042d984ac231709c55a
+translationSchemaVersion: markdown-xml-v1
 translationSource: deepl
-translatedAt: '2026-04-09T00:36:32.780Z'
+translatedAt: '2026-04-10T00:44:33.848Z'
 cover: /uploads/covers/editorial-grid.svg
 ---
 
-Because GitHub Pages does not provide a server runtime, you must **build it completely as a static site** to publish a SvelteKit project.
+Since GitHub Pages does not provide a server runtime, you must **build your SvelteKit project as a fully static site** to host it.
 
-for this project, we used `@sveltejs/adapter-static` to prerender all pages, and configured GitHub Actions to deploy the output of `build/` to Pages.
+For this project, I configured it to prerender all pages using `@sveltejs/adapter-static` and have GitHub Actions deploy the `build/` output to Pages.
 
-## This setup includes
+## What this setup includes
 
-- `adapter-static` conversion
+- `adapter-static` transition
 - Base path handling for GitHub Pages
-- Setting up `trailingSlash = 'always'`
-- read the full post in Markdown to create a static page
-- `.pages.yml` for editing directly in the Pages CMS
+- `trailingSlash = 'always'` configuration
+- Reading the entire post from Markdown to generate static pages
+- `.pages.yml`, which can be edited directly in Pages CMS
 
-## Why trailing slash?
+## Why is a trailing slash necessary?
 
-In GitHub Pages, directory-based URLs like `/blog/post/` are easier to handle.
-With `trailingSlash = 'always'`, each post is output as `index.html` so that it opens reliably on refresh or direct access.
+On GitHub Pages, directory-based URLs like `/blog/post/` are easier to manage. If you use `trailingSlash = 'always'`, each post will be rendered as `index.html`, ensuring it opens reliably even when refreshing or accessing it directly.
 
 ## Where is the content?
 
-posts are stored as Markdown files in `src/content/posts`.  
-each file consists of a frontmatter and body, and a list page and detail page are generated at build time.
+Posts are stored as Markdown files in `src/content/posts`. Each file consists of frontmatter and body text, and during the build process, list pages and detail pages are generated.
 
-## Next steps
+## Next Steps
 
-now we just need to get the repository up on GitHub and set Pages to `GitHub Actions`.  
-then, when you log in to the Pages CMS, read `.pages.yml` so you can edit your posts and site settings right away.
+Now, simply push the repository to GitHub and set Pages to `GitHub Actions`. Then, when you log in to Pages CMS, it will read `.pages.yml`, allowing you to edit posts and site settings immediately.

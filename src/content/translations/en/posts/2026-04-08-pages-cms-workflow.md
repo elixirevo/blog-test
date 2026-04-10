@@ -1,41 +1,40 @@
 ---
-title: Designing static content workflows with the Pages CMS
+title: Designing a Static Content Workflow with Pages CMS
 description: >-
-  Here's an operational flow for managing your site settings and posts together,
-  using your Git repository as a CMS as it is.
+  Here’s a workflow that lets you use your Git repository as a CMS to manage
+  both site settings and posts.
 date: '2026-04-07'
 published: true
 category: Essays
 locale: en
 sourcePath: src/content/posts/2026-04-08-pages-cms-workflow.md
 sourceHash: 6f627dcf99f78732704680f0a339a24832165bbb8de899ba0e20be971be92dc6
+translationSchemaVersion: markdown-xml-v1
 translationSource: deepl
-translatedAt: '2026-04-09T00:36:33.757Z'
+translatedAt: '2026-04-10T00:44:35.028Z'
 ---
 
-The Pages CMS works by **editing files in your GitHub repository directly** without a separate database.
+Pages CMS operates by **directly editing files in the GitHub repository** without using a separate database.
 
-in this project, `.pages.yml` in the root connects the following two things
+In this project, the root file `.pages.yml` connects the following two elements:
 
-## 1. a post collection
+## 1. Post Collection
 
-Register the `src/content/posts` folder as a collection, where you can create new posts and edit existing ones.  
-Fields like `title`, `description`, `date`, `cover`, `body` can be manipulated in the UI, and the actual Markdown file will be committed when saved.
+By registering the `src/content/posts` folder as a collection, you can create new posts and edit existing ones. Fields such as `title`, `description`, `date`, `cover`, `body`, and similar fields are handled in the UI; when saved, the actual Markdown files are committed.
 
-## 2. site settings file
+## 2. Site Configuration File
 
-`src/content/site.json` can be linked to a separate file editor to modify meta information like blog name, description, and URL in the CMS.
+By linking `src/content/site.json` to a separate text editor, you can edit meta information such as the blog name, description, and URL within the CMS.
 
-## Upload images
+## Image Upload
 
-the upload path is `static/uploads`.  
-the body image is saved under the path `/uploads/...` and can be accessed from GitHub Pages after the build with the same path.
+The upload path is `static/uploads`. Body images are saved to the path `/uploads/...`, and after building, they can be accessed via the same path on GitHub Pages.
 
-## How it works
+## Operation
 
-1. You edit a post in the Pages CMS.
-2. the changes are committed to the repository.
-3. They are pushed to the `main` branch, where GitHub Actions rebuilds them.
-4. the latest static deliverables are deployed to GitHub Pages.
+1. Edit posts in the Pages CMS.
+2. Changes are committed to the repository.
+3. When pushed to the `main` branch, GitHub Actions rebuilds the site.
+4. The latest static output is deployed to GitHub Pages.
 
-to summarize, the structure is such that the editor experience remains CMS-like, while the actual source of truth remains in Git.
+In summary, this structure maintains an editor experience similar to a CMS while keeping the actual source of truth in Git.
