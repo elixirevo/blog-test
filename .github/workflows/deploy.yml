@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      payload:
+        description: Pages CMS action payload
+        required: false
+        type: string
 
 permissions:
   contents: write
