@@ -1,0 +1,35 @@
+---
+title: 업로드 테스트 입니다.
+description: 업로드 테스트 입니다.
+date: 2026-04-10T10:23:00
+published: true
+category: History
+cover: /uploads/ishot2026-03-31155954.png
+---
+# Elixir Journal
+
+SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`으로 전체 사이트를 prerender하고, GitHub Pages에 GitHub Actions로 배포하며, Pages CMS에서 Markdown 콘텐츠를 편집할 수 있게 구성되어 있습니다.
+
+## Stack
+
+- SvelteKit + `@sveltejs/adapter-static`
+- GitHub Pages deployment via `.github/workflows/deploy.yml`
+- Pages CMS via root `.pages.yml`
+- Markdown posts in `src/content/posts`
+- DeepL translation sync into `src/content/translations/en/posts`
+
+## Local development
+
+```sh
+bun install
+bun run dev
+```
+
+`Pagefind` 검색 인덱스는 정적 빌드 후 생성됩니다. 검색 기능까지 확인하려면 아래 흐름을 사용합니다.
+
+```sh
+bun run build
+bun run preview
+```
+
+영문 번역 파일까지 로컬에서 갱신하려면 DeepL API 키를 넣고 아래 명령을 실행합니다.
