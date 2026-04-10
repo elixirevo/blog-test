@@ -52,6 +52,7 @@ DEEPL_API_KEY=your-key bun run translate:posts
 4. `src/content/site.json`의 `url`을 실제 배포 URL로 바꿉니다.
 5. 저장소 `Secrets and variables > Actions`에 `DEEPL_API_KEY`를 추가합니다.
 6. DeepL Free를 쓰면 선택적으로 `DEEPL_API_URL=https://api-free.deepl.com`도 추가합니다.
+7. 공개 설정 파일 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`를 두면 포스트별 GitHub Release도 영어 번역본 기준으로 갱신됩니다.
 
 프로젝트 Pages 저장소라면 빌드 시 `GITHUB_REPOSITORY` 값을 읽어 자동으로 base path를 맞춥니다. 사용자/조직 루트 Pages 저장소라면 base path는 빈 문자열로 유지됩니다.
 
@@ -86,6 +87,13 @@ SITE_BASE_PATH=blog bun run build
 5. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
 6. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
 
+## Release workflow
+
+- `main`에 반영된 포스트 파일마다 `post-<slug>` 태그 기반 GitHub Release가 생성되거나 갱신됩니다.
+- 기본값은 한국어 원문을 Release 본문으로 사용합니다.
+- 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 대응되는 `src/content/translations/en/posts/*.md`가 있을 때 영어 번역본으로 Release 본문과 제목을 갱신합니다.
+- 번역본이 없으면 영어 릴리스 모드에서도 자동으로 원문으로 fallback 합니다.
+
 브라우저 첫 접속 시 기본 로케일은 다음 규칙으로 결정됩니다.
 
 - `navigator.languages[0]`이 `ko`로 시작하면 한국어 라우트 유지
@@ -110,6 +118,7 @@ PUBLIC_GISCUS_REPO=elixirevo/blog-test
 PUBLIC_GISCUS_REPO_ID=R_kgDOR9vpNw
 PUBLIC_GISCUS_CATEGORY=General
 PUBLIC_GISCUS_CATEGORY_ID=DIC_kwDOR9vpN84C6b0s
+PUBLIC_RELEASE_USE_TRANSLATIONS=true
 ```
 
 로컬에서 같은 값을 임시로 덮어쓰고 싶다면 셸 환경변수로 넘길 수도 있습니다.

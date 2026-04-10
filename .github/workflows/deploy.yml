@@ -36,6 +36,37 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Detect changed source posts
+        id: changed-posts
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
+            files=""
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            files=$(git diff --diff-filter=ACMRT --name-only "${{ github.event.before }}" "${GITHUB_SHA}" -- 'src/content/posts/*.md')
+          else
+            files=$(git diff-tree --diff-filter=ACMRT --no-commit-id --name-only -r "${GITHUB_SHA}" -- 'src/content/posts/*.md')
+          fi
+
+          {
+            echo 'files<<EOF'
+            printf '%s\n' "$files"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Read public release settings
+        id: release-settings
+        run: |
+          value=false
+
+          if [ -f .env.production ]; then
+            matched=$(grep -E '^PUBLIC_RELEASE_USE_TRANSLATIONS=' .env.production | tail -n 1 | cut -d= -f2- || true)
+            if [ -n "$matched" ]; then
+              value=$(printf '%s' "$matched" | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+            fi
+          fi
+
+          echo "use_translations=$value" >> "$GITHUB_OUTPUT"
+
       - name: Translate Korean posts to English
         run: bun run translate:posts
         env:
@@ -61,6 +92,16 @@ jobs:
           GITHUB_ACTIONS: 'true'
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+
+      - name: Sync post releases
+        if: steps.changed-posts.outputs.files != ''
+        run: bun ./scripts/sync-post-releases.mjs
+        env:
+          CHANGED_POST_FILES: ${{ steps.changed-posts.outputs.files }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_USE_TRANSLATIONS: ${{ steps.release-settings.outputs.use_translations }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
