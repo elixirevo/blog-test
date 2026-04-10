@@ -75,7 +75,7 @@ SITE_BASE_PATH=blog bun run build
 
 - 새 글 파일명: `YYYY-MM-DD-title.md`
 - 업로드 파일명: safe slug로 정규화
-- 카테고리: 자유 입력
+- 카테고리: `Categories` 컬렉션에서 추가 후 게시글에서 선택
 - 발행일: 초 단위까지 포함한 datetime 입력
 - 글 목록: 최신 `date` 기준으로 기본 정렬
 
@@ -92,7 +92,7 @@ SITE_BASE_PATH=blog bun run build
 
 ## Release workflow
 
-- `main`에 반영된 포스트 파일마다 `post-<slug>` 태그 기반 GitHub Release가 생성되거나 갱신됩니다.
+- `main`에 반영된 포스트 파일마다 GitHub 태그 규칙에 맞게 정규화한 `post-...` 태그로 GitHub Release가 생성되거나 갱신됩니다. 공백, `.`, 한글처럼 태그에 바로 쓸 수 없는 문자가 있으면 안전한 slug와 짧은 해시 조합으로 바뀝니다.
 - 기본값은 한국어 원문을 Release 본문으로 사용합니다.
 - 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 대응되는 `src/content/translations/en/posts/*.md`가 있을 때 영어 번역본으로 Release 본문과 제목을 갱신합니다.
 - 번역본이 없으면 영어 릴리스 모드에서도 자동으로 원문으로 fallback 합니다.

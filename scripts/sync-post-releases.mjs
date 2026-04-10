@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,33 @@ const toAbsolutePath = (filePath) =>
 	path.isAbsolute(filePath) ? filePath : path.join(projectRoot, filePath);
 
 const isTruthy = (value) => value !== false;
+const hashFragment = (value) => createHash('sha1').update(value).digest('hex').slice(0, 8);
+
+const slugToReleaseTag = (slug) => {
+	const normalized = slug.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+	const safeFragment = normalized
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+	if (safeFragment === '') {
+		return `post-untitled-${hashFragment(slug)}`;
+	}
+
+	if (safeFragment === slug.toLowerCase()) {
+		return `post-${safeFragment}`;
+	}
+
+	return `post-${safeFragment}-${hashFragment(slug)}`;
+};
+
+const encodeSlugForUrl = (slug) =>
+	slug
+		.split('/')
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join('/');
 
 const readPostDocument = async (filePath, localeFallback) => {
 	const raw = await readFile(filePath, 'utf8');
@@ -72,11 +100,12 @@ const buildSiteUrl = (pathname) => {
 };
 
 const buildReleaseBody = (post) => {
+	const encodedSlug = encodeSlugForUrl(post.slug);
 	const postUrl = buildSiteUrl(
-		post.locale === 'en' ? `/en/blog/${post.slug}` : `/blog/${post.slug}`
+		post.locale === 'en' ? `/en/blog/${encodedSlug}` : `/blog/${encodedSlug}`
 	);
-	const originalUrl = buildSiteUrl(`/blog/${post.slug}`);
-	const translatedUrl = buildSiteUrl(`/en/blog/${post.slug}`);
+	const originalUrl = buildSiteUrl(`/blog/${encodedSlug}`);
+	const translatedUrl = buildSiteUrl(`/en/blog/${encodedSlug}`);
 	const lines = [
 		post.description,
 		'',
@@ -134,7 +163,7 @@ const requestGitHub = async (pathname, init = {}) => {
 };
 
 const upsertRelease = async (post) => {
-	const tagName = `post-${post.slug}`;
+	const tagName = slugToReleaseTag(post.slug);
 	const releasePayload = {
 		tag_name: tagName,
 		target_commitish: targetCommitish,

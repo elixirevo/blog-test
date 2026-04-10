@@ -39,7 +39,12 @@ content:
         type: boolean
       - name: category
         label: Category
-        type: string
+        type: reference
+        options:
+          collection: categories
+          search: name
+          value: '{name}'
+          label: '{name}'
       - name: cover
         label: Cover image
         type: image
@@ -52,6 +57,25 @@ content:
           format: markdown
           path: posts
           switcher: true
+  - name: categories
+    label: Categories
+    type: collection
+    path: src/content/categories
+    filename:
+      template: '{name}.md'
+      field: create
+    view:
+      primary: name
+      fields: [name]
+      sort: [name]
+      search: [name]
+      default:
+        sort: name
+        order: asc
+    fields:
+      - name: name
+        label: Name
+        type: string
   - name: site
     label: Site settings
     type: file
