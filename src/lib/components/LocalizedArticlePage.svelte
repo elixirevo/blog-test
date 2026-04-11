@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import GiscusComments from '$lib/components/GiscusComments.svelte';
-	import type { Locale, UiCopy } from '$lib/i18n';
+	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
+	import { getHreflang, sourceLocale } from '$lib/locales';
+	import { toAbsoluteUrl, toJsonLdScript } from '$lib/seo';
 	import type { SiteConfig } from '$lib/site';
 	import type { BlogPost, PostSummary } from '$lib/server/content';
 
@@ -11,10 +13,11 @@
 		site: SiteConfig;
 		ui: UiCopy;
 		post: BlogPost;
+		availableLocales: Locale[];
 		relatedPosts: PostSummary[];
 	}
 
-	let { locale, site, ui, post, relatedPosts }: Props = $props();
+	let { locale, site, ui, post, availableLocales, relatedPosts }: Props = $props();
 
 	const withBasePath = (html: string, currentBase: string) =>
 		currentBase ? html.replaceAll(/(src|href)="\/(?!\/)/g, `$1="${currentBase}/`) : html;
@@ -24,9 +27,44 @@
 	let headings = $state<{ id: string; text: string; level: number }[]>([]);
 	let activeId = $state('post-title');
 
-	const homeHref = $derived(resolve(locale === 'en' ? '/en' : '/'));
-	const postHref = (slug: string) =>
-		resolve(locale === 'en' ? '/en/blog/[slug]' : '/blog/[slug]', { slug });
+	const postPath = (postLocale: Locale, slug: string) =>
+		toLocalePathname(`/blog/${slug}/`, postLocale);
+	const canonicalPath = $derived(postPath(locale, post.slug));
+	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
+	const alternateLinks = $derived(
+		availableLocales.map((alternateLocale) => ({
+			hreflang: getHreflang(alternateLocale),
+			href: toAbsoluteUrl(site, postPath(alternateLocale, post.slug))
+		}))
+	);
+	const xDefaultUrl = $derived(toAbsoluteUrl(site, postPath(sourceLocale, post.slug)));
+	const coverUrl = $derived(post.cover ? toAbsoluteUrl(site, post.cover) : null);
+	const jsonLd = $derived(
+		toJsonLdScript({
+			'@context': 'https://schema.org',
+			'@type': 'BlogPosting',
+			headline: post.title,
+			description: post.description,
+			image: coverUrl ? [coverUrl] : undefined,
+			datePublished: post.date,
+			dateModified: post.date,
+			articleSection: post.category,
+			inLanguage: site.language,
+			url: canonicalUrl,
+			mainEntityOfPage: {
+				'@type': 'WebPage',
+				'@id': canonicalUrl
+			},
+			author: {
+				'@type': 'Person',
+				name: site.author
+			},
+			publisher: {
+				'@type': 'Person',
+				name: site.author
+			}
+		})
+	);
 
 	onMount(() => {
 		const contentEl = document.querySelector('.article-content');
@@ -92,12 +130,37 @@
 <svelte:head>
 	<title>{post.title} | {site.title}</title>
 	<meta name="description" content={post.description} />
+	<link rel="canonical" href={canonicalUrl} />
+	{#each alternateLinks as alternateLink (alternateLink.hreflang)}
+		<link rel="alternate" hreflang={alternateLink.hreflang} href={alternateLink.href} />
+	{/each}
+	<link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+	<meta property="og:type" content="article" />
+	<meta property="og:site_name" content={site.title} />
+	<meta property="og:title" content={post.title} />
+	<meta property="og:description" content={post.description} />
+	<meta property="og:url" content={canonicalUrl} />
+	<meta property="article:published_time" content={post.date} />
+	<meta property="article:modified_time" content={post.date} />
+	<meta property="article:author" content={site.author} />
+	<meta property="article:section" content={post.category} />
+	{#if coverUrl}
+		<meta property="og:image" content={coverUrl} />
+	{/if}
+	<meta name="twitter:card" content={coverUrl ? 'summary_large_image' : 'summary'} />
+	<meta name="twitter:title" content={post.title} />
+	<meta name="twitter:description" content={post.description} />
+	{#if coverUrl}
+		<meta name="twitter:image" content={coverUrl} />
+	{/if}
 	<meta data-pagefind-filter={`Category:${post.category}`} />
 	<meta data-pagefind-filter={`Locale:${locale}`} />
 	<meta data-pagefind-meta={`Category:${post.category}`} />
 	<meta data-pagefind-meta={`Locale:${locale}`} />
 	<meta data-pagefind-meta={`Published:${post.formattedDate}`} />
 	<meta data-pagefind-sort={`date:${post.date}`} />
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html jsonLd}
 </svelte:head>
 
 <div class="container-large article-grid">
@@ -105,7 +168,7 @@
 
 	<article class="article-center">
 		<header>
-			<a href={homeHref} class="article-back">
+			<a href={resolve(toLocalePathname('/', locale) as '/')} class="article-back">
 				<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
 				{ui.article.backToArchive}
 			</a>
@@ -155,7 +218,10 @@
 
 				<div class="related-grid">
 					{#each relatedPosts as relatedPost (relatedPost.slug)}
-						<a class="related-post" href={postHref(relatedPost.slug)}>
+						<a
+							class="related-post"
+							href={resolve(postPath(locale, relatedPost.slug) as `/blog/${string}`)}
+						>
 							<div class="related-meta font-label">
 								<span>{relatedPost.category}</span>
 								<span class="related-meta-div"></span>

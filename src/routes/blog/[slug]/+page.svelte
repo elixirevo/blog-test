@@ -6,9 +6,16 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const locale = 'ko' as const;
-	const site = getSiteConfig(locale);
-	const ui = getUiCopy(locale);
+	const locale = $derived(data.locale);
+	const site = $derived(getSiteConfig(locale));
+	const ui = $derived(getUiCopy(locale));
 </script>
 
-<LocalizedArticlePage {locale} {site} {ui} post={data.post} relatedPosts={data.relatedPosts} />
+<LocalizedArticlePage
+	{locale}
+	{site}
+	{ui}
+	post={data.post}
+	availableLocales={data.availableLocales}
+	relatedPosts={data.relatedPosts}
+/>

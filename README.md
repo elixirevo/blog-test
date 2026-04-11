@@ -8,7 +8,7 @@ SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`
 - GitHub Pages deployment via `.github/workflows/deploy.yml`
 - Pages CMS via root `.pages.yml`
 - Markdown posts in `src/content/posts`
-- DeepL translation sync into `src/content/translations/en/posts`
+- DeepL translation sync into `src/content/translations/<locale>/posts`
 
 ## Local development
 
@@ -24,7 +24,7 @@ bun run build
 bun run preview
 ```
 
-영문 번역 파일까지 로컬에서 갱신하려면 DeepL API 키를 넣고 아래 명령을 실행합니다.
+등록된 번역 언어 파일까지 로컬에서 갱신하려면 DeepL API 키를 넣고 아래 명령을 실행합니다.
 
 ```sh
 DEEPL_API_KEY=your-key bun run translate:posts
@@ -34,13 +34,13 @@ DEEPL_API_KEY=your-key bun run translate:posts
 
 - `src/content/site.json`: 사이트 제목, 설명, URL 같은 메타 정보
 - `src/content/posts/*.md`: frontmatter + Markdown 본문
-- `src/content/translations/en/posts/*.md`: DeepL이 생성하고 커밋하는 영문 번역본
+- `src/content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
 - `static/uploads`: CMS 업로드 이미지
 
 ## Search
 
 - `/search`: Pagefind 기반 전체 검색 페이지
-- `/en/search`: 영어 번역본 전용 검색 페이지
+- `/<locale>/search`: 등록된 번역 언어별 검색 페이지
 - 게시글 상세 페이지의 제목, 설명, 본문이 검색 인덱스에 포함됩니다.
 - 카테고리와 로케일은 Pagefind filter로 노출됩니다.
 
@@ -52,7 +52,7 @@ DEEPL_API_KEY=your-key bun run translate:posts
 4. `src/content/site.json`의 `url`을 실제 배포 URL로 바꿉니다.
 5. 저장소 `Secrets and variables > Actions`에 `DEEPL_API_KEY`를 추가합니다.
 6. DeepL Free를 쓰면 선택적으로 `DEEPL_API_URL=https://api-free.deepl.com`도 추가합니다.
-7. 공개 설정 파일 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`를 두면 포스트별 GitHub Release도 영어 번역본 기준으로 갱신됩니다.
+7. 공개 설정 파일 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 원문/번역 언어와 릴리즈 언어를 등록합니다.
 
 프로젝트 Pages 저장소라면 빌드 시 `GITHUB_REPOSITORY` 값을 읽어 자동으로 base path를 맞춥니다. 사용자/조직 루트 Pages 저장소라면 base path는 빈 문자열로 유지됩니다.
 
@@ -81,27 +81,39 @@ SITE_BASE_PATH=blog bun run build
 
 ## Translation workflow
 
-1. Pages CMS에서 한국어 원문을 `src/content/posts/*.md`에 저장합니다.
+1. Pages CMS에서 원문을 `src/content/posts/*.md`에 저장합니다.
 2. GitHub Actions가 `bun run translate:posts`를 실행합니다.
-3. 영문 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
+3. `.env.production`의 `PUBLIC_TRANSLATION_LOCALES`에 등록된 각 언어별로 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
 4. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
 5. frontmatter `date`는 DeepL에 보내지지 않고 원문 값을 그대로 복사하므로 게시 시각까지 유지됩니다.
-6. DeepL 요청에는 제목과 문단 시작을 자연스러운 영어 대문자 규칙에 맞추라는 custom instruction도 포함됩니다.
-7. 생성된 번역 파일은 `src/content/translations/en/posts/*.md`에 커밋됩니다.
+6. DeepL 요청에는 마크다운 구조와 frontmatter 의미를 보존하라는 custom instruction도 포함됩니다.
+7. 생성된 번역 파일은 `src/content/translations/<locale>/posts/*.md`에 커밋됩니다.
 8. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
+
+번역 언어는 공개 env로 관리합니다. 아래 예시는 한국어 원문을 영어, 중국어 간체, 일본어, 아랍어로 번역합니다.
+
+```sh
+PUBLIC_SOURCE_LOCALE=ko
+PUBLIC_TRANSLATION_LOCALES=en,zh,ja,ar
+PUBLIC_RELEASE_LOCALE=en
+PUBLIC_RELEASE_USE_TRANSLATIONS=true
+```
+
+DeepL 언어 코드는 기본 매핑을 사용합니다. 필요하면 `DEEPL_SOURCE_LANG_<LOCALE>` 또는 `DEEPL_TARGET_LANG_<LOCALE>` 환경변수로 특정 언어만 덮어쓸 수 있습니다. DeepL `custom_instructions`는 일부 target 언어에서만 지원되므로, 아랍어처럼 미지원 언어는 해당 옵션을 빼고 번역합니다.
 
 ## Release workflow
 
 - `main`에 반영된 포스트 파일마다 GitHub 태그 규칙에 맞게 정규화한 `post-...` 태그로 GitHub Release가 생성되거나 갱신됩니다. 공백, `.`, 한글처럼 태그에 바로 쓸 수 없는 문자가 있으면 안전한 slug와 짧은 해시 조합으로 바뀝니다.
-- 기본값은 한국어 원문을 Release 본문으로 사용합니다.
-- 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 대응되는 `src/content/translations/en/posts/*.md`가 있을 때 영어 번역본으로 Release 본문과 제목을 갱신합니다.
-- 번역본이 없으면 영어 릴리스 모드에서도 자동으로 원문으로 fallback 합니다.
+- 기본값은 원문을 Release 본문으로 사용합니다.
+- 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 `PUBLIC_RELEASE_LOCALE`에 대응되는 `src/content/translations/<locale>/posts/*.md`가 있을 때 해당 번역본으로 Release 본문과 제목을 갱신합니다.
+- 번역본이 없으면 번역 릴리스 모드에서도 자동으로 원문으로 fallback 합니다.
 
 브라우저 첫 접속 시 기본 로케일은 다음 규칙으로 결정됩니다.
 
-- `navigator.languages[0]`이 `ko`로 시작하면 한국어 라우트 유지
-- 그 외 브라우저는 대응되는 `/en/...` 라우트로 이동
-- 상단 언어 토글을 누르면 선택이 `localStorage.preferredLocale`에 저장
+- `/` 루트에 처음 접근했을 때만 브라우저 선호 언어 또는 `localStorage.preferredLocale`을 확인합니다.
+- 선호 언어가 `PUBLIC_TRANSLATION_LOCALES`에 있으면 `/<locale>/`로 이동하고, 원문 언어이면 루트 경로를 유지합니다.
+- 이미 `/en/...`, `/zh/...`처럼 명시적인 언어 경로로 접근한 경우에는 강제로 원문 경로로 바꾸지 않습니다.
+- 상단 언어 선택 값을 바꾸면 선택이 `localStorage.preferredLocale`에 저장됩니다.
 
 ## Giscus comments setup
 
@@ -121,6 +133,9 @@ PUBLIC_GISCUS_REPO=elixirevo/blog-test
 PUBLIC_GISCUS_REPO_ID=R_kgDOR9vpNw
 PUBLIC_GISCUS_CATEGORY=General
 PUBLIC_GISCUS_CATEGORY_ID=DIC_kwDOR9vpN84C6b0s
+PUBLIC_SOURCE_LOCALE=ko
+PUBLIC_TRANSLATION_LOCALES=en,zh,ja,ar
+PUBLIC_RELEASE_LOCALE=en
 PUBLIC_RELEASE_USE_TRANSLATIONS=true
 ```
 

@@ -9,10 +9,12 @@
 		getLocaleFromPathname,
 		getPreferredLocale,
 		getUiCopy,
+		isLocale,
 		stripBasePath,
 		toLocalePathname,
 		withBasePath
 	} from '$lib/i18n';
+	import { getConfiguredLocales, getLocaleLabel, type Locale } from '$lib/locales';
 	import { getSiteConfig } from '$lib/site';
 	import { onMount } from 'svelte';
 
@@ -22,18 +24,11 @@
 	let isDarkMode = $state(false);
 	let isSearchOpen = $state(false);
 
-	const routeLocale = $derived(
-		page.route.id?.startsWith('/en')
-			? 'en'
-			: getLocaleFromPathname(stripBasePath(page.url.pathname, base))
-	);
+	const localeOptions = getConfiguredLocales();
+	const routeLocale = $derived(getLocaleFromPathname(stripBasePath(page.url.pathname, base)));
 	const site = $derived(getSiteConfig(routeLocale));
 	const ui = $derived(getUiCopy(routeLocale));
-	const alternateLocale = $derived(routeLocale === 'en' ? 'ko' : 'en');
-	const alternatePath = $derived(
-		toLocalePathname(stripBasePath(page.url.pathname, base), alternateLocale)
-	);
-	const alternateHref = $derived(withBasePath(alternatePath, base));
+	const homePath = $derived(toLocalePathname('/', routeLocale));
 
 	const syncThemeFromStorage = () => {
 		const prefersDark =
@@ -55,17 +50,22 @@
 		document.documentElement.lang = site.language;
 		syncThemeFromStorage();
 
+		const pathname = stripBasePath(window.location.pathname, base);
+		const shouldRedirectFromRoot = pathname === '/' || pathname === '';
+
+		if (!shouldRedirectFromRoot) {
+			return;
+		}
+
 		const storedLocale = localStorage.getItem('preferredLocale');
 		const preferredLocale =
-			storedLocale === 'ko' || storedLocale === 'en'
+			storedLocale && isLocale(storedLocale)
 				? storedLocale
 				: getPreferredLocale(window.navigator.languages);
 
 		if (preferredLocale !== routeLocale) {
-			const nextPath = withBasePath(
-				toLocalePathname(stripBasePath(window.location.pathname, base), preferredLocale),
-				base
-			);
+			const nextPath = withBasePath(toLocalePathname(pathname, preferredLocale), base);
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			void goto(`${nextPath}${window.location.search}${window.location.hash}`, {
 				replaceState: true,
 				noScroll: true,
@@ -85,23 +85,35 @@
 		}
 	};
 
-	const persistLocale = (locale: 'ko' | 'en') => {
+	const persistLocale = (locale: Locale) => {
 		localStorage.setItem('preferredLocale', locale);
 	};
 
-	const switchLocale = (locale: 'ko' | 'en') => {
+	const switchLocale = (locale: Locale) => {
+		if (!isLocale(locale)) {
+			return;
+		}
+
 		persistLocale(locale);
-		void goto(alternateHref, {
+		const nextPath = withBasePath(
+			toLocalePathname(stripBasePath(page.url.pathname, base), locale),
+			base
+		);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(nextPath, {
 			replaceState: false,
 			noScroll: true,
 			keepFocus: true
 		});
 	};
+
+	const handleLocaleChange = (event: Event) => {
+		const select = event.currentTarget as HTMLSelectElement;
+		switchLocale(select.value);
+	};
 </script>
 
 <svelte:head>
-	<title>{site.title}</title>
-	<meta name="description" content={site.description} />
 	<meta name="theme-color" content="#f9f9f9" />
 	<link rel="icon" href={favicon} />
 	<link rel="alternate" type="application/rss+xml" title={site.title} href={resolve('/rss.xml')} />
@@ -112,7 +124,7 @@
 
 	<nav class="navbar">
 		<div class="container">
-			<a class="nav-brand" href={resolve(routeLocale === 'en' ? '/en' : '/')}>
+			<a class="nav-brand" href={resolve(homePath as '/')}>
 				{site.title}
 			</a>
 			<div class="nav-actions">
@@ -124,13 +136,18 @@
 					<span class="material-symbols-outlined" data-icon="search">search</span>
 					<span class="ui-font">{ui.nav.searchButton}</span>
 				</button>
-				<button
-					type="button"
-					class="locale-link ui-font"
-					onclick={() => switchLocale(alternateLocale)}
+				<label class="visually-hidden" for="locale-select">{ui.nav.localeSwitch}</label>
+				<select
+					id="locale-select"
+					class="locale-link locale-select ui-font"
+					value={routeLocale}
+					aria-label={ui.nav.localeSwitch}
+					onchange={handleLocaleChange}
 				>
-					{ui.nav.localeSwitch}
-				</button>
+					{#each localeOptions as localeOption (localeOption)}
+						<option value={localeOption}>{getLocaleLabel(localeOption)}</option>
+					{/each}
+				</select>
 				<button onclick={toggleTheme} aria-label="Toggle theme" class="theme-toggle">
 					<span
 						class="material-symbols-outlined"

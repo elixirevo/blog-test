@@ -6,9 +6,9 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const locale = 'en' as const;
-	const site = getSiteConfig(locale);
-	const ui = getUiCopy(locale);
+	const locale = $derived(data.locale);
+	const site = $derived(getSiteConfig(locale));
+	const ui = $derived(getUiCopy(locale));
 </script>
 
 <LocalizedHomePage {locale} {site} {ui} posts={data.posts} />

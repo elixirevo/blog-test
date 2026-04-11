@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Locale, UiCopy } from '$lib/i18n';
+	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
+	import { getConfiguredLocales, getHreflang, sourceLocale } from '$lib/locales';
+	import { toAbsoluteUrl, toJsonLdScript } from '$lib/seo';
 	import type { SiteConfig } from '$lib/site';
 	import type { PostSummary } from '$lib/server/content';
 
@@ -13,7 +15,17 @@
 
 	let { locale, site, ui, posts }: Props = $props();
 
-	let activeCategory = $state('');
+	let activeCategory = $state<string | null>(null);
+	const selectedCategory = $derived(activeCategory ?? ui.home.allCategory);
+	const canonicalPath = $derived(toLocalePathname('/', locale));
+	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
+	const alternateLinks = $derived(
+		getConfiguredLocales().map((alternateLocale) => ({
+			hreflang: getHreflang(alternateLocale),
+			href: toAbsoluteUrl(site, toLocalePathname('/', alternateLocale))
+		}))
+	);
+	const xDefaultUrl = $derived(toAbsoluteUrl(site, toLocalePathname('/', sourceLocale)));
 
 	const categories = $derived([
 		ui.home.allCategory,
@@ -27,23 +39,54 @@
 
 	const filteredPosts = $derived(
 		posts.filter(
-			(post) => activeCategory === ui.home.allCategory || post.category === activeCategory
+			(post) => selectedCategory === ui.home.allCategory || post.category === selectedCategory
 		)
 	);
 
-	$effect(() => {
-		if (activeCategory === '') {
-			activeCategory = ui.home.allCategory;
-		}
-	});
+	const postPath = (postLocale: Locale, slug: string) =>
+		toLocalePathname(`/blog/${slug}/`, postLocale);
 
-	const postHref = (slug: string) =>
-		resolve(locale === 'en' ? '/en/blog/[slug]' : '/blog/[slug]', { slug });
+	const jsonLd = $derived(
+		toJsonLdScript({
+			'@context': 'https://schema.org',
+			'@type': 'Blog',
+			name: site.title,
+			description: site.description,
+			url: canonicalUrl,
+			inLanguage: site.language,
+			publisher: {
+				'@type': 'Person',
+				name: site.author
+			},
+			blogPost: posts.slice(0, 10).map((post) => ({
+				'@type': 'BlogPosting',
+				headline: post.title,
+				description: post.description,
+				datePublished: post.date,
+				url: toAbsoluteUrl(site, postPath(locale, post.slug))
+			}))
+		})
+	);
 </script>
 
 <svelte:head>
 	<title>{site.title}</title>
 	<meta name="description" content={site.description} />
+	<link rel="canonical" href={canonicalUrl} />
+	{#each alternateLinks as alternateLink (alternateLink.hreflang)}
+		<link rel="alternate" hreflang={alternateLink.hreflang} href={alternateLink.href} />
+	{/each}
+	<link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={site.title} />
+	<meta property="og:title" content={site.title} />
+	<meta property="og:description" content={site.description} />
+	<meta property="og:url" content={canonicalUrl} />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content={site.title} />
+	<meta name="twitter:description" content={site.description} />
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html jsonLd}
 </svelte:head>
 
 <div class="container-small">
@@ -52,7 +95,7 @@
 			{#each categories as category (category)}
 				<button
 					type="button"
-					class="filter-btn font-label {category === activeCategory ? 'active' : ''}"
+					class="filter-btn font-label {category === selectedCategory ? 'active' : ''}"
 					onclick={() => {
 						activeCategory = category;
 					}}
@@ -71,7 +114,7 @@
 						{post.formattedDate}
 					</time>
 					<h2 class="post-title font-body">
-						<a href={postHref(post.slug)}>{post.title}</a>
+						<a href={resolve(postPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
 					</h2>
 				</article>
 			{/each}
@@ -82,7 +125,7 @@
 					type="button"
 					class="font-label"
 					onclick={() => {
-						activeCategory = ui.home.allCategory;
+						activeCategory = null;
 					}}
 				>
 					{ui.home.viewAll}

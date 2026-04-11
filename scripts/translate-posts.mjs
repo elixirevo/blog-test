@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +8,132 @@ import matter from 'gray-matter';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
 const sourceDir = path.join(projectRoot, 'src/content/posts');
-const targetDir = path.join(projectRoot, 'src/content/translations/en/posts');
+
+const loadEnvFile = (filePath) => {
+	if (!existsSync(filePath)) {
+		return;
+	}
+
+	const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (trimmed === '' || trimmed.startsWith('#')) {
+			continue;
+		}
+
+		const separatorIndex = trimmed.indexOf('=');
+		if (separatorIndex === -1) {
+			continue;
+		}
+
+		const key = trimmed.slice(0, separatorIndex).trim();
+		const value = trimmed
+			.slice(separatorIndex + 1)
+			.trim()
+			.replace(/^"|"$/g, '')
+			.replace(/^'|'$/g, '');
+
+		if (process.env[key] === undefined) {
+			process.env[key] = value;
+		}
+	}
+};
+
+loadEnvFile(path.join(projectRoot, '.env.production'));
+
+const normalizeLocale = (value, fallback = 'ko') => {
+	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
+
+	return normalized === '' ? fallback : normalized;
+};
+
+const parseLocaleList = (value) => {
+	const seen = new Set();
+
+	return (value ?? '')
+		.split(',')
+		.map((locale) => normalizeLocale(locale, ''))
+		.filter((locale) => {
+			if (locale === '' || seen.has(locale)) {
+				return false;
+			}
+
+			seen.add(locale);
+			return true;
+		});
+};
+
+const sourceLocale = normalizeLocale(process.env.PUBLIC_SOURCE_LOCALE, 'ko');
+const targetLocales = parseLocaleList(
+	process.env.PUBLIC_TRANSLATION_LOCALES || process.env.PUBLIC_TRANSLATION_LOCALE || 'en'
+).filter((locale) => locale !== sourceLocale);
+
+const deeplLanguageCodes = {
+	ar: 'AR',
+	de: 'DE',
+	en: 'EN-US',
+	es: 'ES',
+	fr: 'FR',
+	it: 'IT',
+	ja: 'JA',
+	ko: 'KO',
+	pt: 'PT-PT',
+	'pt-br': 'PT-BR',
+	zh: 'ZH-HANS',
+	'zh-hans': 'ZH-HANS',
+	'zh-hant': 'ZH-HANT'
+};
+
+const customInstructionTargetLanguageBases = new Set([
+	'de',
+	'en',
+	'es',
+	'fr',
+	'it',
+	'ja',
+	'ko',
+	'zh'
+]);
+const customInstructionSkipWarnings = new Set();
+
+const supportsCustomInstructions = (targetLang) => {
+	const base = normalizeLocale(targetLang, '').split('-')[0] ?? '';
+
+	return customInstructionTargetLanguageBases.has(base);
+};
+
+const getEnvLanguageCode = (prefix, locale) => {
+	const key = `${prefix}_${locale.replaceAll('-', '_').toUpperCase()}`;
+
+	return process.env[key]?.trim() ?? '';
+};
+
+const getDeepLLanguageCode = (locale, prefix) => {
+	const override = getEnvLanguageCode(prefix, locale);
+	if (override !== '') {
+		return override;
+	}
+
+	const normalized = normalizeLocale(locale, '');
+	const base = normalized.split('-')[0] ?? normalized;
+
+	if (prefix === 'DEEPL_SOURCE_LANG') {
+		if (base === 'en') {
+			return 'EN';
+		}
+
+		if (base === 'pt') {
+			return 'PT';
+		}
+
+		if (base === 'zh') {
+			return 'ZH';
+		}
+	}
+
+	return deeplLanguageCodes[normalized] ?? deeplLanguageCodes[base] ?? normalized.toUpperCase();
+};
 
 const apiKey = process.env.DEEPL_API_KEY?.trim() ?? '';
 
@@ -27,8 +153,8 @@ const translateEndpoint = `${defaultApiUrl}/v2/translate`;
 const translationChunkLimit = 20_000;
 const translationSchemaVersion = 'markdown-xml-v2';
 const plainTextCustomInstructions = [
-	'Capitalize the first letter of titles and paragraph openings when natural in English.',
-	'Use standard English capitalization for headings and the start of body paragraphs.'
+	'Use natural grammar, punctuation, and capitalization for the target language.',
+	'Preserve the authorial tone while making titles, descriptions, and paragraph openings read naturally.'
 ];
 const structuredMarkdownInstructions = [
 	...plainTextCustomInstructions,
@@ -117,6 +243,7 @@ const inferTranslationState = async (targetFile) => {
 		return {
 			exists: true,
 			sourceHash: typeof data.sourceHash === 'string' ? data.sourceHash : null,
+			locale: typeof data.locale === 'string' ? normalizeLocale(data.locale) : null,
 			schemaVersion:
 				typeof data.translationSchemaVersion === 'string' ? data.translationSchemaVersion : null
 		};
@@ -125,6 +252,7 @@ const inferTranslationState = async (targetFile) => {
 			return {
 				exists: false,
 				sourceHash: null,
+				locale: null,
 				schemaVersion: null
 			};
 		}
@@ -583,22 +711,38 @@ const translateTexts = async (texts, options = {}) => {
 		return [];
 	}
 
-	const { customInstructions = plainTextCustomInstructions, ...requestOptions } = options;
+	const {
+		customInstructions = plainTextCustomInstructions,
+		sourceLang,
+		targetLang,
+		...requestOptions
+	} = options;
+	const hasCustomInstructions = Array.isArray(customInstructions) && customInstructions.length > 0;
+	const requestBody = {
+		source_lang: sourceLang,
+		target_lang: targetLang,
+		preserve_formatting: true,
+		model_type: 'quality_optimized',
+		text: texts,
+		...requestOptions
+	};
+
+	if (hasCustomInstructions && supportsCustomInstructions(targetLang)) {
+		requestBody.custom_instructions = customInstructions;
+	} else if (hasCustomInstructions && !customInstructionSkipWarnings.has(targetLang)) {
+		customInstructionSkipWarnings.add(targetLang);
+		console.log(
+			`Skipping DeepL custom_instructions for ${targetLang}; this target language does not support them.`
+		);
+	}
+
 	const response = await fetch(translateEndpoint, {
 		method: 'POST',
 		headers: {
 			Authorization: `DeepL-Auth-Key ${apiKey}`,
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify({
-			source_lang: 'KO',
-			target_lang: 'EN-US',
-			preserve_formatting: true,
-			model_type: 'quality_optimized',
-			custom_instructions: customInstructions,
-			text: texts,
-			...requestOptions
-		})
+		body: JSON.stringify(requestBody)
 	});
 
 	if (!response.ok) {
@@ -614,7 +758,7 @@ const translateTexts = async (texts, options = {}) => {
 	return payload.translations.map((entry) => entry.text);
 };
 
-const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
+const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, languageCodes) => {
 	const { data, content } = matter(sourceRaw);
 	const title = typeof data.title === 'string' ? data.title.trim() : '';
 	const description = typeof data.description === 'string' ? data.description.trim() : '';
@@ -629,10 +773,11 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 	const bodyChunks = splitMarkdownForTranslation(content);
 	const structuredChunks = bodyChunks.map((chunk) => createStructuredMarkdownChunk(chunk));
 	const [translatedMeta, translatedBodyChunks] = await Promise.all([
-		translateTexts([title, description]),
+		translateTexts([title, description], languageCodes),
 		translateTexts(
 			structuredChunks.map((chunk) => chunk.text),
 			{
+				...languageCodes,
 				customInstructions: structuredMarkdownInstructions,
 				tag_handling: 'xml',
 				tag_handling_version: 'v2',
@@ -654,9 +799,10 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 		published: data.published !== false,
 		category:
 			typeof data.category === 'string' && data.category.trim() !== '' ? data.category : 'Notes',
-		locale: 'en',
+		locale: targetLocale,
 		sourcePath: toPosixPath(path.relative(projectRoot, sourceFile)),
 		sourceHash,
+		sourceLocale,
 		translationSchemaVersion,
 		translationSource: 'deepl',
 		translatedAt: new Date().toISOString()
@@ -669,67 +815,90 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash) => {
 	return matter.stringify(translatedBody, nextData);
 };
 
-await mkdir(targetDir, { recursive: true });
-
 const sourceFiles = await listMarkdownFiles(sourceDir);
-const targetFiles = await listMarkdownFiles(targetDir);
 const sourceByName = new Map(sourceFiles.map((file) => [path.basename(file), file]));
 
-let removedCount = 0;
-for (const targetFile of targetFiles) {
-	if (sourceByName.has(path.basename(targetFile))) {
-		continue;
-	}
-
-	await rm(targetFile);
-	removedCount += 1;
-	console.log(`Removed orphan translation: ${toPosixPath(path.relative(projectRoot, targetFile))}`);
+if (targetLocales.length === 0) {
+	console.log('No translation locales configured. Skipping DeepL sync.');
+	process.exit(0);
 }
 
+const sourceLang = getDeepLLanguageCode(sourceLocale, 'DEEPL_SOURCE_LANG');
 const pending = [];
+let removedCount = 0;
 let skippedCount = 0;
 
-for (const sourceFile of sourceFiles) {
-	const sourceRaw = await readFile(sourceFile, 'utf8');
-	const sourceHash = hashContent(sourceRaw);
-	const targetFile = path.join(targetDir, path.basename(sourceFile));
-	const targetState = await inferTranslationState(targetFile);
-	const isTranslationCurrent =
-		targetState.sourceHash === sourceHash &&
-		(apiKey === '' || targetState.schemaVersion === translationSchemaVersion);
+for (const targetLocale of targetLocales) {
+	const targetDir = path.join(projectRoot, 'src/content/translations', targetLocale, 'posts');
+	await mkdir(targetDir, { recursive: true });
 
-	if (isTranslationCurrent) {
-		skippedCount += 1;
-		continue;
+	const targetFiles = await listMarkdownFiles(targetDir);
+	for (const targetFile of targetFiles) {
+		if (sourceByName.has(path.basename(targetFile))) {
+			continue;
+		}
+
+		await rm(targetFile);
+		removedCount += 1;
+		console.log(
+			`Removed orphan translation: ${toPosixPath(path.relative(projectRoot, targetFile))}`
+		);
 	}
 
-	pending.push({
-		sourceFile,
-		sourceRaw,
-		sourceHash,
-		targetFile,
-		needsUpdate: targetState.exists
-	});
+	for (const sourceFile of sourceFiles) {
+		const sourceRaw = await readFile(sourceFile, 'utf8');
+		const sourceHash = hashContent(sourceRaw);
+		const targetFile = path.join(targetDir, path.basename(sourceFile));
+		const targetState = await inferTranslationState(targetFile);
+		const isTranslationCurrent =
+			targetState.sourceHash === sourceHash &&
+			targetState.locale === targetLocale &&
+			(apiKey === '' || targetState.schemaVersion === translationSchemaVersion);
+
+		if (isTranslationCurrent) {
+			skippedCount += 1;
+			continue;
+		}
+
+		pending.push({
+			sourceFile,
+			sourceRaw,
+			sourceHash,
+			targetFile,
+			targetLocale,
+			languageCodes: {
+				sourceLang,
+				targetLang: getDeepLLanguageCode(targetLocale, 'DEEPL_TARGET_LANG')
+			},
+			needsUpdate: targetState.exists
+		});
+	}
 }
 
 if (pending.length > 0 && apiKey === '') {
 	throw new Error(
-		'DEEPL_API_KEY is missing. Add the repository secret before deploying new or changed Korean posts.'
+		`DEEPL_API_KEY is missing. Add the repository secret before deploying new or changed ${sourceLocale} posts.`
 	);
 }
 
 let translatedCount = 0;
 for (const job of pending) {
-	const translatedPost = await translatePost(job.sourceFile, job.sourceRaw, job.sourceHash);
+	const translatedPost = await translatePost(
+		job.sourceFile,
+		job.sourceRaw,
+		job.sourceHash,
+		job.targetLocale,
+		job.languageCodes
+	);
 	await writeFile(job.targetFile, translatedPost, 'utf8');
 	translatedCount += 1;
 	console.log(
-		`${job.needsUpdate ? 'Updated' : 'Created'} translation: ${toPosixPath(
+		`${job.needsUpdate ? 'Updated' : 'Created'} ${job.targetLocale} translation: ${toPosixPath(
 			path.relative(projectRoot, job.targetFile)
 		)}`
 	);
 }
 
 console.log(
-	`DeepL sync complete. created_or_updated=${translatedCount} skipped=${skippedCount} removed=${removedCount}`
+	`DeepL sync complete. locales=${targetLocales.join(',')} created_or_updated=${translatedCount} skipped=${skippedCount} removed=${removedCount}`
 );

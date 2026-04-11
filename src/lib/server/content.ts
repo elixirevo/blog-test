@@ -1,7 +1,13 @@
 import matter from 'gray-matter';
 import hljs from 'highlight.js';
 import { marked, type Tokens } from 'marked';
-import type { Locale } from '$lib/i18n';
+import {
+	getConfiguredLocales,
+	isTranslationLocale,
+	normalizeLocale,
+	sourceLocale,
+	type Locale
+} from '$lib/locales';
 import { getSiteConfig } from '$lib/site';
 
 const escapeHtml = (value: string) =>
@@ -43,23 +49,22 @@ marked.use({
 	}
 });
 
-const postFilesByLocale: Record<Locale, Record<string, string>> = {
-	ko: import.meta.glob('/src/content/posts/*.md', {
-		eager: true,
-		import: 'default',
-		query: '?raw'
-	}) as Record<string, string>,
-	en: import.meta.glob('/src/content/translations/en/posts/*.md', {
-		eager: true,
-		import: 'default',
-		query: '?raw'
-	}) as Record<string, string>
-};
+const sourcePostFiles = import.meta.glob('/src/content/posts/*.md', {
+	eager: true,
+	import: 'default',
+	query: '?raw'
+}) as Record<string, string>;
+
+const translatedPostFiles = import.meta.glob('/src/content/translations/*/posts/*.md', {
+	eager: true,
+	import: 'default',
+	query: '?raw'
+}) as Record<string, string>;
 
 type Frontmatter = {
 	title?: string;
 	description?: string;
-	date?: string;
+	date?: string | Date;
 	published?: boolean;
 	category?: string;
 	cover?: string;
@@ -90,6 +95,18 @@ export type BlogPost = Omit<ParsedPost, 'published' | 'timestamp'>;
 export type PostSummary = Omit<ParsedPost, 'html' | 'published' | 'timestamp'>;
 
 const toSlug = (path: string) => path.split('/').at(-1)?.replace(/\.md$/, '') ?? path;
+
+const getTranslationLocaleFromPath = (path: string): Locale | null => {
+	const match = path.match(/\/src\/content\/translations\/([^/]+)\/posts\//);
+
+	if (!match) {
+		return null;
+	}
+
+	const locale = normalizeLocale(match[1]);
+
+	return isTranslationLocale(locale) ? locale : null;
+};
 
 const normalizeCover = (cover: unknown) => {
 	if (typeof cover !== 'string' || cover.trim() === '') {
@@ -140,10 +157,12 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		throw new Error(`Missing required frontmatter in ${path}`);
 	}
 
-	const timestamp = Date.parse(frontmatter.date);
+	const date =
+		frontmatter.date instanceof Date ? frontmatter.date.toISOString() : String(frontmatter.date);
+	const timestamp = Date.parse(date);
 
 	if (Number.isNaN(timestamp)) {
-		throw new Error(`Invalid date in ${path}: ${frontmatter.date}`);
+		throw new Error(`Invalid date in ${path}: ${date}`);
 	}
 
 	return {
@@ -151,7 +170,7 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		slug,
 		title: frontmatter.title,
 		description: frontmatter.description,
-		date: frontmatter.date,
+		date,
 		published: frontmatter.published !== false,
 		formattedDate: formatDate(locale, timestamp),
 		readingTime: estimateReadingTime(content),
@@ -168,16 +187,34 @@ const comparePostsByPublishTime = (left: ParsedPost, right: ParsedPost) =>
 	right.date.localeCompare(left.date) ||
 	right.slug.localeCompare(left.slug);
 
-const postsByLocale: Record<Locale, ParsedPost[]> = {
-	ko: Object.entries(postFilesByLocale.ko)
-		.map(([path, source]) => parsePost(path, source, 'ko'))
-		.filter(({ published }) => published)
-		.sort(comparePostsByPublishTime),
-	en: Object.entries(postFilesByLocale.en)
-		.map(([path, source]) => parsePost(path, source, 'en'))
+const postsByLocale = new Map<Locale, ParsedPost[]>();
+
+postsByLocale.set(
+	sourceLocale,
+	Object.entries(sourcePostFiles)
+		.map(([path, source]) => parsePost(path, source, sourceLocale))
 		.filter(({ published }) => published)
 		.sort(comparePostsByPublishTime)
-};
+);
+
+for (const [path, source] of Object.entries(translatedPostFiles)) {
+	const locale = getTranslationLocaleFromPath(path);
+
+	if (!locale) {
+		continue;
+	}
+
+	const posts = postsByLocale.get(locale) ?? [];
+	posts.push(parsePost(path, source, locale));
+	postsByLocale.set(locale, posts);
+}
+
+for (const [locale, posts] of postsByLocale) {
+	postsByLocale.set(
+		locale,
+		posts.filter(({ published }) => published).sort(comparePostsByPublishTime)
+	);
+}
 
 const toSummary = (post: ParsedPost): PostSummary => ({
 	locale: post.locale,
@@ -197,11 +234,11 @@ const toBlogPost = (post: ParsedPost): BlogPost => ({
 	html: post.html
 });
 
-export const getAllPosts = (locale: Locale = 'ko'): PostSummary[] =>
-	postsByLocale[locale].map(toSummary);
+export const getAllPosts = (locale: Locale = sourceLocale): PostSummary[] =>
+	(postsByLocale.get(locale) ?? []).map(toSummary);
 
-export const getPost = (slug: string, locale: Locale = 'ko'): BlogPost | undefined => {
-	const post = postsByLocale[locale].find((entry) => entry.slug === slug);
+export const getPost = (slug: string, locale: Locale = sourceLocale): BlogPost | undefined => {
+	const post = postsByLocale.get(locale)?.find((entry) => entry.slug === slug);
 
 	if (!post) {
 		return undefined;
@@ -209,3 +246,8 @@ export const getPost = (slug: string, locale: Locale = 'ko'): BlogPost | undefin
 
 	return toBlogPost(post);
 };
+
+export const getPostLocales = (slug: string): Locale[] =>
+	getConfiguredLocales().filter((locale) =>
+		postsByLocale.get(locale)?.some((post) => post.slug === slug)
+	);

@@ -1,6 +1,13 @@
-export const supportedLocales = ['ko', 'en'] as const;
+import {
+	configuredLocales,
+	getTranslationLocales,
+	isTranslationLocale,
+	normalizeLocale,
+	sourceLocale,
+	type Locale
+} from '$lib/locales';
 
-export type Locale = (typeof supportedLocales)[number];
+export type { Locale } from '$lib/locales';
 
 export type UiCopy = {
 	nav: {
@@ -45,14 +52,113 @@ export type UiCopy = {
 	};
 };
 
-export const defaultLocale: Locale = 'ko';
+export const supportedLocales = configuredLocales;
+export const defaultLocale: Locale = sourceLocale;
 
-const uiCopy: Record<Locale, UiCopy> = {
+const englishUiCopy: UiCopy = {
+	nav: {
+		searchButton: 'Search',
+		searchAriaLabel: 'Open search',
+		localeSwitch: 'Language'
+	},
+	home: {
+		allCategory: 'All',
+		emptyState: 'No entries in this section yet.',
+		viewAll: 'View all'
+	},
+	article: {
+		backToArchive: 'Back to archive',
+		continueReading: 'Continue reading',
+		relatedTitle: 'More posts',
+		contents: 'Contents'
+	},
+	comments: {
+		label: 'Conversation',
+		title: 'Join the discussion',
+		emptyMessage:
+			'Fill in `giscusRepo`, `giscusRepoId`, `giscusCategory`, and `giscusCategoryId` in `site.json` to enable comments.'
+	},
+	search: {
+		eyebrow: 'Search',
+		title: 'Search the archive',
+		description:
+			'Search across translated titles, descriptions, and article bodies. Category filters are computed directly from the Pagefind index.',
+		placeholder: 'Search the archive',
+		ariaLabel: 'Archive search',
+		loading: 'Loading the search index.',
+		missingTitle: 'Pagefind index not found yet.',
+		missingHint: 'For local verification, run `bun run build` and then `bun run preview`.'
+	},
+	modal: {
+		close: 'Close search',
+		categories: 'Categories',
+		select: 'Select',
+		navigate: 'Navigate'
+	},
+	footer: {
+		rss: 'RSS'
+	}
+};
+
+const uiCopy: Record<string, UiCopy> = {
+	ar: {
+		...englishUiCopy,
+		nav: {
+			searchButton: 'بحث',
+			searchAriaLabel: 'فتح البحث',
+			localeSwitch: 'اللغة'
+		},
+		home: {
+			allCategory: 'الكل',
+			emptyState: 'لا توجد مقالات في هذا القسم بعد.',
+			viewAll: 'عرض الكل'
+		},
+		article: {
+			backToArchive: 'العودة إلى الأرشيف',
+			continueReading: 'متابعة القراءة',
+			relatedTitle: 'مقالات أخرى',
+			contents: 'المحتويات'
+		},
+		search: {
+			...englishUiCopy.search,
+			title: 'البحث في الأرشيف',
+			placeholder: 'البحث في الأرشيف',
+			ariaLabel: 'البحث في الأرشيف',
+			loading: 'يتم تحميل فهرس البحث.'
+		}
+	},
+	en: englishUiCopy,
+	ja: {
+		...englishUiCopy,
+		nav: {
+			searchButton: '検索',
+			searchAriaLabel: '検索を開く',
+			localeSwitch: '言語'
+		},
+		home: {
+			allCategory: 'すべて',
+			emptyState: 'このセクションにはまだ記事がありません。',
+			viewAll: 'すべて表示'
+		},
+		article: {
+			backToArchive: 'アーカイブへ戻る',
+			continueReading: '続きを読む',
+			relatedTitle: '他の記事',
+			contents: '目次'
+		},
+		search: {
+			...englishUiCopy.search,
+			title: 'アーカイブ検索',
+			placeholder: 'アーカイブ検索',
+			ariaLabel: 'アーカイブ検索',
+			loading: '検索インデックスを読み込んでいます。'
+		}
+	},
 	ko: {
 		nav: {
 			searchButton: '검색',
 			searchAriaLabel: '글 검색 열기',
-			localeSwitch: 'EN'
+			localeSwitch: '언어'
 		},
 		home: {
 			allCategory: '전체',
@@ -92,64 +198,51 @@ const uiCopy: Record<Locale, UiCopy> = {
 			rss: 'RSS'
 		}
 	},
-	en: {
+	zh: {
+		...englishUiCopy,
 		nav: {
-			searchButton: 'Search',
-			searchAriaLabel: 'Open search',
-			localeSwitch: 'KO'
+			searchButton: '搜索',
+			searchAriaLabel: '打开搜索',
+			localeSwitch: '语言'
 		},
 		home: {
-			allCategory: 'All',
-			emptyState: 'No entries in this section yet.',
-			viewAll: 'View all'
+			allCategory: '全部',
+			emptyState: '此部分还没有文章。',
+			viewAll: '查看全部'
 		},
 		article: {
-			backToArchive: 'Back to archive',
-			continueReading: 'Continue reading',
-			relatedTitle: 'More posts in English',
-			contents: 'Contents'
-		},
-		comments: {
-			label: 'Conversation',
-			title: 'Join the discussion',
-			emptyMessage:
-				'Fill in `giscusRepo`, `giscusRepoId`, `giscusCategory`, and `giscusCategoryId` in `site.json` to enable comments.'
+			backToArchive: '返回归档',
+			continueReading: '继续阅读',
+			relatedTitle: '更多文章',
+			contents: '目录'
 		},
 		search: {
-			eyebrow: 'Search',
-			title: 'Search the archive',
-			description:
-				'Search across translated titles, descriptions, and article bodies. Category filters are computed directly from the Pagefind index.',
-			placeholder: 'Search the archive',
-			ariaLabel: 'Archive search',
-			loading: 'Loading the search index.',
-			missingTitle: 'Pagefind index not found yet.',
-			missingHint: 'For local verification, run `bun run build` and then `bun run preview`.'
-		},
-		modal: {
-			close: 'Close search',
-			categories: 'Categories',
-			select: 'Select',
-			navigate: 'Navigate'
-		},
-		footer: {
-			rss: 'RSS'
+			...englishUiCopy.search,
+			title: '搜索归档',
+			placeholder: '搜索归档',
+			ariaLabel: '搜索归档',
+			loading: '正在加载搜索索引。'
 		}
 	}
 };
 
-export const getUiCopy = (locale: Locale): UiCopy => uiCopy[locale];
+export const getUiCopy = (locale: Locale): UiCopy =>
+	uiCopy[normalizeLocale(locale)] ??
+	uiCopy[normalizeLocale(locale).split('-')[0] ?? ''] ??
+	englishUiCopy;
 
-export const getLocaleFromPathname = (pathname: string): Locale =>
-	pathname === '/en' || pathname.startsWith('/en/') ? 'en' : 'ko';
+export const getLocaleFromPathname = (pathname: string): Locale => {
+	const segment = pathname.split('/').filter(Boolean)[0];
+
+	return isTranslationLocale(segment) ? normalizeLocale(segment) : sourceLocale;
+};
 
 export const stripLocalePrefix = (pathname: string): string => {
-	if (pathname === '/en') {
-		return '/';
-	}
+	const segments = pathname.split('/').filter(Boolean);
 
-	if (pathname.startsWith('/en/')) {
-		return pathname.slice(3) || '/';
+	if (isTranslationLocale(segments[0])) {
+		const stripped = `/${segments.slice(1).join('/')}`;
+		return stripped === '/' ? '/' : stripped;
 	}
 
 	return pathname || '/';
@@ -158,11 +251,11 @@ export const stripLocalePrefix = (pathname: string): string => {
 export const toLocalePathname = (pathname: string, locale: Locale): string => {
 	const normalized = stripLocalePrefix(pathname);
 
-	if (locale === 'en') {
-		return normalized === '/' ? '/en/' : `/en${normalized}`;
+	if (normalizeLocale(locale) === sourceLocale) {
+		return normalized;
 	}
 
-	return normalized;
+	return normalized === '/' ? `/${locale}/` : `/${locale}${normalized}`;
 };
 
 export const stripBasePath = (pathname: string, basePath: string): string => {
@@ -177,9 +270,20 @@ export const withBasePath = (pathname: string, basePath: string): string =>
 	basePath === '' ? pathname : `${basePath}${pathname === '/' ? '/' : pathname}`;
 
 export const getPreferredLocale = (languages: readonly string[]): Locale => {
-	const first = languages[0]?.toLowerCase() ?? '';
-	return first.startsWith('ko') ? 'ko' : 'en';
+	for (const language of languages) {
+		const normalized = normalizeLocale(language, '');
+		const base = normalized.split('-')[0] ?? normalized;
+		const matchedLocale = configuredLocales.find(
+			(locale) => locale === normalized || locale.split('-')[0] === base
+		);
+
+		if (matchedLocale) {
+			return matchedLocale;
+		}
+	}
+
+	return sourceLocale;
 };
 
 export const isLocale = (value: string): value is Locale =>
-	supportedLocales.includes(value as Locale);
+	configuredLocales.includes(normalizeLocale(value)) || getTranslationLocales().includes(value);

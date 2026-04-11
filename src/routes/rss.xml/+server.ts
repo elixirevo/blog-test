@@ -1,6 +1,7 @@
-import { base } from '$app/paths';
+import { toAbsoluteUrl } from '$lib/seo';
 import { getSiteConfig } from '$lib/site';
 import { getAllPosts } from '$lib/server/content';
+import { sourceLocale } from '$lib/locales';
 
 export const prerender = true;
 export const trailingSlash = 'never';
@@ -13,24 +14,17 @@ const escapeXml = (value: string) =>
 		.replaceAll('"', '&quot;')
 		.replaceAll("'", '&apos;');
 
-const normalizeSiteUrl = (value: string) => value.replace(/\/+$/, '');
-
-const withBase = (path: string) => `${base}${path}`;
-
-const siteConfig = getSiteConfig('ko');
-
-const toAbsoluteUrl = (path: string) =>
-	new URL(withBase(path), `${normalizeSiteUrl(siteConfig.url)}/`).toString();
+const siteConfig = getSiteConfig(sourceLocale);
 
 export const GET = () => {
-	const posts = getAllPosts('ko');
-	const channelLink = toAbsoluteUrl('/');
-	const feedLink = toAbsoluteUrl('/rss.xml');
+	const posts = getAllPosts(sourceLocale);
+	const channelLink = toAbsoluteUrl(siteConfig, '/');
+	const feedLink = toAbsoluteUrl(siteConfig, '/rss.xml');
 	const lastBuildDate = posts[0]?.date ?? new Date().toISOString();
 
 	const items = posts
 		.map((post) => {
-			const link = toAbsoluteUrl(`/blog/${post.slug}/`);
+			const link = toAbsoluteUrl(siteConfig, `/blog/${post.slug}/`);
 
 			return `<item>
 	<title>${escapeXml(post.title)}</title>

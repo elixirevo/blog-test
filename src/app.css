@@ -126,6 +126,18 @@ input {
 	font-family: 'Inter', sans-serif;
 }
 
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* LAYOUT */
 .app-shell {
 	position: relative;
@@ -239,6 +251,19 @@ input {
 	transition:
 		opacity 0.3s ease,
 		color 0.3s ease;
+}
+
+.locale-select {
+	padding: 0;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.locale-select:focus-visible {
+	outline: 2px solid var(--border-strong);
+	outline-offset: 4px;
 }
 
 @media (min-width: 768px) {

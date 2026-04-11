@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,10 +7,60 @@ import matter from 'gray-matter';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
-const sourceDir = path.join(projectRoot, 'src/content/posts');
-const translationDir = path.join(projectRoot, 'src/content/translations/en/posts');
 const siteConfigPath = path.join(projectRoot, 'src/content/site.json');
 const githubApiBaseUrl = 'https://api.github.com';
+
+const loadEnvFile = (filePath) => {
+	if (!existsSync(filePath)) {
+		return;
+	}
+
+	for (const line of readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+		const trimmed = line.trim();
+		if (trimmed === '' || trimmed.startsWith('#')) {
+			continue;
+		}
+
+		const separatorIndex = trimmed.indexOf('=');
+		if (separatorIndex === -1) {
+			continue;
+		}
+
+		const key = trimmed.slice(0, separatorIndex).trim();
+		const value = trimmed
+			.slice(separatorIndex + 1)
+			.trim()
+			.replace(/^"|"$/g, '')
+			.replace(/^'|'$/g, '');
+
+		if (process.env[key] === undefined) {
+			process.env[key] = value;
+		}
+	}
+};
+
+loadEnvFile(path.join(projectRoot, '.env.production'));
+
+const normalizeLocale = (value, fallback = 'ko') => {
+	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
+
+	return normalized === '' ? fallback : normalized;
+};
+
+const parseLocaleList = (value) =>
+	(value ?? '')
+		.split(',')
+		.map((locale) => normalizeLocale(locale, ''))
+		.filter(Boolean);
+
+const sourceLocale = normalizeLocale(process.env.PUBLIC_SOURCE_LOCALE, 'ko');
+const releaseLocale = normalizeLocale(
+	process.env.PUBLIC_RELEASE_LOCALE,
+	parseLocaleList(
+		process.env.PUBLIC_TRANSLATION_LOCALES || process.env.PUBLIC_TRANSLATION_LOCALE
+	)[0] ?? 'en'
+);
+const translationDir = path.join(projectRoot, 'src/content/translations', releaseLocale, 'posts');
 
 const repoFullName = process.env.GITHUB_REPOSITORY?.trim() ?? '';
 const githubToken = process.env.GITHUB_TOKEN?.trim() ?? '';
@@ -71,7 +122,8 @@ const readPostDocument = async (filePath, localeFallback) => {
 	const date = typeof data.date === 'string' ? data.date.trim() : String(data.date ?? '').trim();
 	const category =
 		typeof data.category === 'string' && data.category.trim() !== '' ? data.category : 'Notes';
-	const locale = data.locale === 'en' ? 'en' : localeFallback;
+	const locale =
+		typeof data.locale === 'string' && data.locale.trim() !== '' ? data.locale : localeFallback;
 
 	if (title === '' || description === '' || date === '') {
 		throw new Error(`Missing required frontmatter in ${path.relative(projectRoot, filePath)}`);
@@ -102,10 +154,10 @@ const buildSiteUrl = (pathname) => {
 const buildReleaseBody = (post) => {
 	const encodedSlug = encodeSlugForUrl(post.slug);
 	const postUrl = buildSiteUrl(
-		post.locale === 'en' ? `/en/blog/${encodedSlug}` : `/blog/${encodedSlug}`
+		post.locale === sourceLocale ? `/blog/${encodedSlug}` : `/${post.locale}/blog/${encodedSlug}`
 	);
 	const originalUrl = buildSiteUrl(`/blog/${encodedSlug}`);
-	const translatedUrl = buildSiteUrl(`/en/blog/${encodedSlug}`);
+	const translatedUrl = buildSiteUrl(`/${releaseLocale}/blog/${encodedSlug}`);
 	const lines = [
 		post.description,
 		'',
@@ -118,12 +170,12 @@ const buildReleaseBody = (post) => {
 		lines.push(`- Published URL: ${postUrl}`);
 	}
 
-	if (post.locale === 'en' && originalUrl) {
+	if (post.locale !== sourceLocale && originalUrl) {
 		lines.push(`- Original URL: ${originalUrl}`);
 	}
 
-	if (post.locale === 'ko' && translatedUrl) {
-		lines.push(`- English URL: ${translatedUrl}`);
+	if (post.locale === sourceLocale && translatedUrl) {
+		lines.push(`- ${releaseLocale.toUpperCase()} URL: ${translatedUrl}`);
 	}
 
 	lines.push('', '---');
@@ -214,7 +266,7 @@ for (const changedFile of changedPostFiles) {
 		releaseUseTranslations && (await Bun.file(translationFile).exists())
 			? translationFile
 			: sourceFile;
-	const releaseSourceLocale = releaseSourceFile === translationFile ? 'en' : 'ko';
+	const releaseSourceLocale = releaseSourceFile === translationFile ? releaseLocale : sourceLocale;
 	const post = await readPostDocument(releaseSourceFile, releaseSourceLocale);
 
 	await upsertRelease(post);
