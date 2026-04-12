@@ -37,7 +37,7 @@ const renderCodeBlock = ({ text, lang }: Tokens.Code) => {
 	const languageClass = language ? ` language-${language}` : ' language-plaintext';
 	const languageLabel = language ? language.toUpperCase() : 'TEXT';
 
-	return `<pre class="code-block"><span class="code-language">${languageLabel}</span><code class="hljs${languageClass}">${highlighted}</code></pre>`;
+	return `<div class="code-block"><span class="code-language">${languageLabel}</span><pre><code class="hljs${languageClass}">${highlighted}</code></pre></div>`;
 };
 
 marked.use({
