@@ -1,6 +1,6 @@
 import { loadPostPage } from '$lib/server/post-loaders';
-import { getAllPosts } from '$lib/server/content';
+import { getSourcePostEntries } from '$lib/server/route-entries';
 import { sourceLocale } from '$lib/locales';
 
-export const entries = () => getAllPosts(sourceLocale).map(({ slug }) => ({ slug }));
+export const entries = getSourcePostEntries;
 export const load = ({ params }) => loadPostPage(sourceLocale, params.slug);

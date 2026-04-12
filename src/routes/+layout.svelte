@@ -15,6 +15,7 @@
 		withBasePath
 	} from '$lib/i18n';
 	import { getConfiguredLocales, getLocaleLabel, type Locale } from '$lib/locales';
+	import { toHomePath, toRssPath } from '$lib/routes';
 	import { getSiteConfig } from '$lib/site';
 	import { onMount } from 'svelte';
 
@@ -30,7 +31,7 @@
 	const routeLocale = $derived(getLocaleFromPathname(stripBasePath(page.url.pathname, base)));
 	const site = $derived(getSiteConfig(routeLocale));
 	const ui = $derived(getUiCopy(routeLocale));
-	const homePath = $derived(toLocalePathname('/', routeLocale));
+	const homePath = $derived(toHomePath(routeLocale));
 	const currentLocaleLabel = $derived(getLocaleLabel(routeLocale));
 	const hasLocaleSwitcher = $derived(localeOptions.length > 1);
 	const shouldShowLocaleMenu = $derived(localeOptions.length > 2);
@@ -39,13 +40,13 @@
 			? (localeOptions.find((localeOption) => localeOption !== routeLocale) ?? null)
 			: null
 	);
-	const currentRssPath = $derived(toLocalePathname('/rss.xml', routeLocale));
+	const currentRssPath = $derived(toRssPath(routeLocale));
 	const rssLinks = $derived(
 		localeOptions.map((localeOption) => {
 			const localeSite = getSiteConfig(localeOption);
 
 			return {
-				href: resolve(toLocalePathname('/rss.xml', localeOption) as '/rss.xml'),
+				href: resolve(toRssPath(localeOption) as '/rss.xml'),
 				locale: localeOption,
 				title:
 					localeOptions.length > 1

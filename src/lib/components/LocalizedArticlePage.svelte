@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { base, resolve } from '$app/paths';
+	import ArticleTableOfContents from '$lib/components/ArticleTableOfContents.svelte';
 	import GiscusComments from '$lib/components/GiscusComments.svelte';
-	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
-	import { getHreflang, sourceLocale } from '$lib/locales';
-	import { toAbsoluteUrl, toJsonLdScript } from '$lib/seo';
+	import RelatedPosts from '$lib/components/RelatedPosts.svelte';
+	import SeoLinks from '$lib/components/SeoLinks.svelte';
+	import { type Locale, type UiCopy } from '$lib/i18n';
+	import { toHomePath, toPostPath } from '$lib/routes';
+	import { toAbsoluteUrl, toAlternateLinks, toJsonLdScript, toXDefaultUrl } from '$lib/seo';
 	import type { SiteConfig } from '$lib/site';
 	import type { BlogPost, PostSummary } from '$lib/server/content';
 
@@ -28,17 +31,16 @@
 	let activeId = $state('post-title');
 	let articleContent = $state<HTMLElement>();
 
-	const postPath = (postLocale: Locale, slug: string) =>
-		toLocalePathname(`/blog/${slug}/`, postLocale);
-	const canonicalPath = $derived(postPath(locale, post.slug));
+	const canonicalPath = $derived(toPostPath(locale, post.slug));
 	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
 	const alternateLinks = $derived(
-		availableLocales.map((alternateLocale) => ({
-			hreflang: getHreflang(alternateLocale),
-			href: toAbsoluteUrl(site, postPath(alternateLocale, post.slug))
-		}))
+		toAlternateLinks(site, availableLocales, (alternateLocale) =>
+			toPostPath(alternateLocale, post.slug)
+		)
 	);
-	const xDefaultUrl = $derived(toAbsoluteUrl(site, postPath(sourceLocale, post.slug)));
+	const xDefaultUrl = $derived(
+		toXDefaultUrl(site, (postLocale) => toPostPath(postLocale, post.slug))
+	);
 	const coverUrl = $derived(post.cover ? toAbsoluteUrl(site, post.cover) : null);
 	const jsonLd = $derived(
 		toJsonLdScript({
@@ -171,11 +173,6 @@
 <svelte:head>
 	<title>{post.title} | {site.title}</title>
 	<meta name="description" content={post.description} />
-	<link rel="canonical" href={canonicalUrl} />
-	{#each alternateLinks as alternateLink (alternateLink.hreflang)}
-		<link rel="alternate" hreflang={alternateLink.hreflang} href={alternateLink.href} />
-	{/each}
-	<link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
 	<meta property="og:type" content="article" />
 	<meta property="og:site_name" content={site.title} />
 	<meta property="og:title" content={post.title} />
@@ -213,12 +210,14 @@
 	{@html jsonLd}
 </svelte:head>
 
+<SeoLinks {canonicalUrl} {alternateLinks} {xDefaultUrl} />
+
 <div class="container-large article-grid">
 	<div class="article-spacer"></div>
 
 	<article class="article-center">
 		<header>
-			<a href={resolve(toLocalePathname('/', locale) as '/')} class="article-back">
+			<a href={resolve(toHomePath(locale) as '/')} class="article-back">
 				<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
 				{ui.article.backToArchive}
 			</a>
@@ -266,65 +265,14 @@
 			<GiscusComments {site} {ui} term={post.giscusTerm} />
 		{/key}
 
-		{#if relatedPosts.length > 0}
-			<div class="related-boundary">
-				<div>
-					<p class="related-label font-label">{ui.article.continueReading}</p>
-					<h2 class="related-h2 font-headline">{ui.article.relatedTitle}</h2>
-				</div>
-
-				<div class="related-grid">
-					{#each relatedPosts as relatedPost (relatedPost.slug)}
-						<a
-							class="related-post"
-							href={resolve(postPath(locale, relatedPost.slug) as `/blog/${string}`)}
-						>
-							<div class="related-meta font-label">
-								<span>{relatedPost.category}</span>
-								<span class="related-meta-div"></span>
-								<span>{relatedPost.formattedDate}</span>
-							</div>
-							<h3 class="related-title font-headline">
-								{relatedPost.title}
-							</h3>
-							<p class="related-desc font-body">
-								{relatedPost.description}
-							</p>
-						</a>
-					{/each}
-				</div>
-			</div>
-		{/if}
+		<RelatedPosts {locale} {ui} posts={relatedPosts} />
 	</article>
 
-	<aside class="article-aside">
-		{#if headings.length > 0}
-			<div class="toc-container">
-				<p class="toc-label font-label">{ui.article.contents}</p>
-
-				<nav class="toc-nav">
-					<a
-						href="#post-title"
-						onclick={(event) => scrollToHeading('post-title', event)}
-						class="toc-link toc-link-top {activeId === 'post-title' ? 'active' : ''}"
-					>
-						<span>{post.title}</span>
-					</a>
-
-					{#each headings as heading (heading.id)}
-						<a
-							href={`#${heading.id}`}
-							onclick={(event) => scrollToHeading(heading.id, event)}
-							class="toc-link {heading.level === 2 ? 'heading-2' : 'heading-3'} {activeId ===
-							heading.id
-								? 'active'
-								: ''}"
-						>
-							<span>{heading.text}</span>
-						</a>
-					{/each}
-				</nav>
-			</div>
-		{/if}
-	</aside>
+	<ArticleTableOfContents
+		title={post.title}
+		contentsLabel={ui.article.contents}
+		{headings}
+		{activeId}
+		onNavigate={scrollToHeading}
+	/>
 </div>

@@ -1,6 +1,6 @@
-import { getTranslationLocales } from '$lib/locales';
 import { loadPostListPage } from '$lib/server/post-loaders';
+import { getTranslationLocaleEntries } from '$lib/server/route-entries';
 
-export const entries = () => getTranslationLocales().map((locale) => ({ locale }));
+export const entries = getTranslationLocaleEntries;
 
 export const load = ({ params }) => loadPostListPage(params.locale);

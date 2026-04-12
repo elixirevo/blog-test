@@ -1,28 +1,20 @@
-import { toLocalePathname, type Locale } from '$lib/i18n';
+import type { Locale } from '$lib/i18n';
+import { toHomePath, toPostPath, toRssPath } from '$lib/routes';
 import { toAbsoluteUrl } from '$lib/seo';
 import { getAllPosts } from '$lib/server/content';
+import { createXmlResponse, escapeXml } from '$lib/server/xml';
 import { getSiteConfig } from '$lib/site';
-
-const escapeXml = (value: string) =>
-	value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&apos;');
-
-const getRssPath = (locale: Locale) => toLocalePathname('/rss.xml', locale);
 
 export const createRssResponse = (locale: Locale) => {
 	const siteConfig = getSiteConfig(locale);
 	const posts = getAllPosts(locale);
-	const channelLink = toAbsoluteUrl(siteConfig, toLocalePathname('/', locale));
-	const feedLink = toAbsoluteUrl(siteConfig, getRssPath(locale));
+	const channelLink = toAbsoluteUrl(siteConfig, toHomePath(locale));
+	const feedLink = toAbsoluteUrl(siteConfig, toRssPath(locale));
 	const lastBuildDate = posts[0]?.date ?? new Date().toISOString();
 
 	const items = posts
 		.map((post) => {
-			const link = toAbsoluteUrl(siteConfig, toLocalePathname(`/blog/${post.slug}/`, locale));
+			const link = toAbsoluteUrl(siteConfig, toPostPath(locale, post.slug));
 			const categories = [post.category, ...post.tags]
 				.map((category) => `		<category>${escapeXml(category)}</category>`)
 				.join('\n');
@@ -51,10 +43,5 @@ ${items}
 </channel>
 </rss>`;
 
-	return new Response(rss, {
-		headers: {
-			'Cache-Control': 'max-age=0, s-maxage=3600',
-			'Content-Type': 'application/rss+xml; charset=utf-8'
-		}
-	});
+	return createXmlResponse(rss, 'application/rss+xml');
 };

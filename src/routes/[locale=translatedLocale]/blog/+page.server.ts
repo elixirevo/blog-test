@@ -1,9 +1,8 @@
-import { redirect } from '@sveltejs/kit';
-import { resolve } from '$app/paths';
-import { getTranslationLocales } from '$lib/locales';
+import { getTranslationLocaleEntries } from '$lib/server/route-entries';
+import { redirectToHome } from '$lib/server/redirects';
 
-export const entries = () => getTranslationLocales().map((locale) => ({ locale }));
+export const entries = getTranslationLocaleEntries;
 
 export const load = ({ params }) => {
-	throw redirect(308, resolve(`/${params.locale}/` as '/en/'));
+	redirectToHome(params.locale);
 };

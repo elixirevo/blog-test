@@ -1,6 +1,6 @@
-import { redirect } from '@sveltejs/kit';
-import { resolve } from '$app/paths';
+import { sourceLocale } from '$lib/locales';
+import { redirectToHome } from '$lib/server/redirects';
 
 export const load = () => {
-	throw redirect(308, resolve('/'));
+	redirectToHome(sourceLocale);
 };

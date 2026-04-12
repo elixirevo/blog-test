@@ -1,6 +1,8 @@
 <script lang="ts">
 	import PagefindSearch from '$lib/components/PagefindSearch.svelte';
-	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
+	import SeoLinks from '$lib/components/SeoLinks.svelte';
+	import { type Locale, type UiCopy } from '$lib/i18n';
+	import { toSearchPath } from '$lib/routes';
 	import { toAbsoluteUrl } from '$lib/seo';
 	import type { SiteConfig } from '$lib/site';
 
@@ -12,7 +14,7 @@
 
 	let { locale, site, ui }: Props = $props();
 
-	const canonicalPath = $derived(toLocalePathname('/search/', locale));
+	const canonicalPath = $derived(toSearchPath(locale));
 	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
 </script>
 
@@ -20,8 +22,9 @@
 	<title>{ui.search.title} | {site.title}</title>
 	<meta name="description" content={site.description} />
 	<meta name="robots" content="noindex, follow" />
-	<link rel="canonical" href={canonicalUrl} />
 </svelte:head>
+
+<SeoLinks {canonicalUrl} />
 
 <section class="section-stack">
 	<div class="section-head">

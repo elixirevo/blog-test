@@ -1,21 +1,14 @@
-import { toLocalePathname } from '$lib/i18n';
-import { getConfiguredLocales, getHreflang, sourceLocale, type Locale } from '$lib/locales';
+import { getConfiguredLocales, sourceLocale } from '$lib/locales';
+import { toHomePath, toPostPath } from '$lib/routes';
 import { getSiteConfig } from '$lib/site';
-import { toAbsoluteUrl } from '$lib/seo';
+import { toAbsoluteUrl, toAlternateLinks } from '$lib/seo';
 import { getAllPosts, getPostLocales } from '$lib/server/content';
+import { createXmlResponse, escapeXml } from '$lib/server/xml';
 
 export const prerender = true;
 export const trailingSlash = 'never';
 
 const siteConfig = getSiteConfig(sourceLocale);
-
-const escapeXml = (value: string) =>
-	value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&apos;');
 
 type AlternateLink = {
 	hreflang: string;
@@ -31,8 +24,6 @@ type SitemapEntry = {
 };
 
 const formatLastmod = (date: string) => new Date(date).toISOString().slice(0, 10);
-
-const toPostPath = (locale: Locale, slug: string) => toLocalePathname(`/blog/${slug}/`, locale);
 
 const renderAlternates = (alternates: AlternateLink[] = []) =>
 	alternates
@@ -57,17 +48,14 @@ const renderEntry = ({ loc, lastmod, changefreq, priority, alternates }: Sitemap
 export const GET = () => {
 	const locales = getConfiguredLocales();
 
-	const homeAlternates = locales.map((locale) => ({
-		hreflang: getHreflang(locale),
-		href: toAbsoluteUrl(siteConfig, toLocalePathname('/', locale))
-	}));
+	const homeAlternates = toAlternateLinks(siteConfig, locales, toHomePath);
 	homeAlternates.push({
 		hreflang: 'x-default',
-		href: toAbsoluteUrl(siteConfig, toLocalePathname('/', sourceLocale))
+		href: toAbsoluteUrl(siteConfig, toHomePath(sourceLocale))
 	});
 
 	const entries: SitemapEntry[] = locales.map((locale) => ({
-		loc: toAbsoluteUrl(siteConfig, toLocalePathname('/', locale)),
+		loc: toAbsoluteUrl(siteConfig, toHomePath(locale)),
 		changefreq: 'daily',
 		priority: locale === sourceLocale ? '1.0' : '0.9',
 		alternates: homeAlternates
@@ -76,10 +64,9 @@ export const GET = () => {
 	for (const locale of locales) {
 		for (const post of getAllPosts(locale)) {
 			const alternateLocales = getPostLocales(post.slug);
-			const alternates = alternateLocales.map((alternateLocale) => ({
-				hreflang: getHreflang(alternateLocale),
-				href: toAbsoluteUrl(siteConfig, toPostPath(alternateLocale, post.slug))
-			}));
+			const alternates = toAlternateLinks(siteConfig, alternateLocales, (alternateLocale) =>
+				toPostPath(alternateLocale, post.slug)
+			);
 
 			if (alternateLocales.includes(sourceLocale)) {
 				alternates.push({
@@ -103,10 +90,5 @@ export const GET = () => {
 ${entries.map(renderEntry).join('\n')}
 </urlset>`;
 
-	return new Response(sitemap, {
-		headers: {
-			'Cache-Control': 'max-age=0, s-maxage=3600',
-			'Content-Type': 'application/xml; charset=utf-8'
-		}
-	});
+	return createXmlResponse(sitemap, 'application/xml');
 };

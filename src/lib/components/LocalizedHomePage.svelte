@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
-	import { getConfiguredLocales, getHreflang, sourceLocale } from '$lib/locales';
-	import { toAbsoluteUrl, toJsonLdScript } from '$lib/seo';
+	import PostFilters from '$lib/components/PostFilters.svelte';
+	import SeoLinks from '$lib/components/SeoLinks.svelte';
+	import { type Locale, type UiCopy } from '$lib/i18n';
+	import { getConfiguredLocales } from '$lib/locales';
+	import { toHomePath, toPostPath } from '$lib/routes';
+	import { toAbsoluteUrl, toAlternateLinks, toJsonLdScript, toXDefaultUrl } from '$lib/seo';
 	import type { SiteConfig } from '$lib/site';
 	import type { PostSummary } from '$lib/server/content';
 
@@ -18,15 +21,12 @@
 	let activeCategory = $state<string | null>(null);
 	let activeTag = $state<string | null>(null);
 	const selectedCategory = $derived(activeCategory ?? ui.home.allCategory);
-	const canonicalPath = $derived(toLocalePathname('/', locale));
+	const canonicalPath = $derived(toHomePath(locale));
 	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
 	const alternateLinks = $derived(
-		getConfiguredLocales().map((alternateLocale) => ({
-			hreflang: getHreflang(alternateLocale),
-			href: toAbsoluteUrl(site, toLocalePathname('/', alternateLocale))
-		}))
+		toAlternateLinks(site, getConfiguredLocales(), (alternateLocale) => toHomePath(alternateLocale))
 	);
-	const xDefaultUrl = $derived(toAbsoluteUrl(site, toLocalePathname('/', sourceLocale)));
+	const xDefaultUrl = $derived(toXDefaultUrl(site, toHomePath));
 
 	const categories = $derived([
 		ui.home.allCategory,
@@ -55,9 +55,6 @@
 		)
 	);
 
-	const postPath = (postLocale: Locale, slug: string) =>
-		toLocalePathname(`/blog/${slug}/`, postLocale);
-
 	const jsonLd = $derived(
 		toJsonLdScript({
 			'@context': 'https://schema.org',
@@ -75,7 +72,7 @@
 				headline: post.title,
 				description: post.description,
 				datePublished: post.date,
-				url: toAbsoluteUrl(site, postPath(locale, post.slug))
+				url: toAbsoluteUrl(site, toPostPath(locale, post.slug))
 			}))
 		})
 	);
@@ -84,11 +81,6 @@
 <svelte:head>
 	<title>{site.title}</title>
 	<meta name="description" content={site.description} />
-	<link rel="canonical" href={canonicalUrl} />
-	{#each alternateLinks as alternateLink (alternateLink.hreflang)}
-		<link rel="alternate" hreflang={alternateLink.hreflang} href={alternateLink.href} />
-	{/each}
-	<link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content={site.title} />
 	<meta property="og:title" content={site.title} />
@@ -101,37 +93,21 @@
 	{@html jsonLd}
 </svelte:head>
 
+<SeoLinks {canonicalUrl} {alternateLinks} {xDefaultUrl} />
+
 <div class="container-small">
-	<header>
-		<div class="filter-group category-filter-group {tags.length > 0 ? 'has-tag-filter' : ''}">
-			{#each categories as category (category)}
-				<button
-					type="button"
-					class="filter-btn font-label {category === selectedCategory ? 'active' : ''}"
-					onclick={() => {
-						activeCategory = category;
-					}}
-				>
-					{category}
-				</button>
-			{/each}
-		</div>
-		{#if tags.length > 0}
-			<div class="filter-group tag-filter-group" aria-label="Tags">
-				{#each tags as tag (tag)}
-					<button
-						type="button"
-						class="filter-btn tag-filter-btn font-label {tag === activeTag ? 'active' : ''}"
-						onclick={() => {
-							activeTag = activeTag === tag ? null : tag;
-						}}
-					>
-						{tag}
-					</button>
-				{/each}
-			</div>
-		{/if}
-	</header>
+	<PostFilters
+		{categories}
+		{tags}
+		{selectedCategory}
+		{activeTag}
+		onCategorySelect={(category) => {
+			activeCategory = category;
+		}}
+		onTagToggle={(tag) => {
+			activeTag = activeTag === tag ? null : tag;
+		}}
+	/>
 
 	<section class="post-list" aria-label="Recent posts">
 		{#if filteredPosts.length > 0}
@@ -141,7 +117,7 @@
 						{post.formattedDate}
 					</time>
 					<h2 class="post-title font-body">
-						<a href={resolve(postPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
+						<a href={resolve(toPostPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
 					</h2>
 				</article>
 			{/each}

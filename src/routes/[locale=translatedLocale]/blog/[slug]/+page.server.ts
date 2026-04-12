@@ -1,13 +1,5 @@
-import { getAllPosts } from '$lib/server/content';
 import { loadPostPage } from '$lib/server/post-loaders';
-import { getTranslationLocales } from '$lib/locales';
+import { getTranslatedPostEntries } from '$lib/server/route-entries';
 
-export const entries = () =>
-	getTranslationLocales().flatMap((locale) =>
-		getAllPosts(locale).map(({ slug }) => ({
-			locale,
-			slug
-		}))
-	);
-
+export const entries = getTranslatedPostEntries;
 export const load = ({ params }) => loadPostPage(params.locale, params.slug);
