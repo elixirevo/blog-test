@@ -67,6 +67,7 @@ type Frontmatter = {
 	date?: string | Date;
 	published?: boolean;
 	category?: string;
+	tags?: string[] | string;
 	cover?: string;
 	locale?: string;
 	sourceHash?: string;
@@ -85,6 +86,7 @@ type ParsedPost = {
 	formattedDate: string;
 	readingTime: string;
 	category: string;
+	tags: string[];
 	cover: string | null;
 	excerpt: string;
 	html: string;
@@ -114,6 +116,48 @@ const normalizeCover = (cover: unknown) => {
 	}
 
 	return cover.startsWith('/') ? cover : `/${cover.replace(/^\/+/, '')}`;
+};
+
+const parseTagString = (value: string) => {
+	const trimmed = value.trim();
+
+	if (trimmed === '') {
+		return [];
+	}
+
+	if (trimmed.includes('#')) {
+		return trimmed.split(/[\s,]+/).filter(Boolean);
+	}
+
+	return trimmed.split(',');
+};
+
+const normalizeTag = (value: unknown) => {
+	if (typeof value !== 'string') {
+		return null;
+	}
+
+	const tag = value.trim().replace(/^#+/, '').trim();
+
+	return tag === '' ? null : tag;
+};
+
+const normalizeTags = (tags: unknown) => {
+	const values = Array.isArray(tags)
+		? tags.flatMap((tag) => (typeof tag === 'string' ? parseTagString(tag) : [tag]))
+		: typeof tags === 'string'
+			? parseTagString(tags)
+			: [];
+	const seen = new Set<string>();
+
+	return values.map(normalizeTag).filter((tag): tag is string => {
+		if (!tag || seen.has(tag.toLowerCase())) {
+			return false;
+		}
+
+		seen.add(tag.toLowerCase());
+		return true;
+	});
 };
 
 const stripMarkdown = (content: string) =>
@@ -175,6 +219,7 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		formattedDate: formatDate(locale, timestamp),
 		readingTime: estimateReadingTime(content),
 		category: frontmatter.category?.trim() || 'Notes',
+		tags: normalizeTags(frontmatter.tags),
 		cover: normalizeCover(frontmatter.cover),
 		excerpt: createExcerpt(frontmatter.description, content),
 		html: marked.parse(content) as string,
@@ -225,6 +270,7 @@ const toSummary = (post: ParsedPost): PostSummary => ({
 	formattedDate: post.formattedDate,
 	readingTime: post.readingTime,
 	category: post.category,
+	tags: post.tags,
 	cover: post.cover,
 	excerpt: post.excerpt
 });

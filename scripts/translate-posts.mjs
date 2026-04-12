@@ -194,6 +194,48 @@ const extractRawFrontmatterField = (source, fieldName) => {
 
 const toPosixPath = (value) => value.split(path.sep).join('/');
 
+const parseTagString = (value) => {
+	const trimmed = value.trim();
+
+	if (trimmed === '') {
+		return [];
+	}
+
+	if (trimmed.includes('#')) {
+		return trimmed.split(/[\s,]+/).filter(Boolean);
+	}
+
+	return trimmed.split(',');
+};
+
+const normalizeTag = (value) => {
+	if (typeof value !== 'string') {
+		return null;
+	}
+
+	const tag = value.trim().replace(/^#+/, '').trim();
+
+	return tag === '' ? null : tag;
+};
+
+const normalizeTags = (tags) => {
+	const values = Array.isArray(tags)
+		? tags.flatMap((tag) => (typeof tag === 'string' ? parseTagString(tag) : [tag]))
+		: typeof tags === 'string'
+			? parseTagString(tags)
+			: [];
+	const seen = new Set();
+
+	return values.map(normalizeTag).filter((tag) => {
+		if (!tag || seen.has(tag.toLowerCase())) {
+			return false;
+		}
+
+		seen.add(tag.toLowerCase());
+		return true;
+	});
+};
+
 const escapeXml = (value) =>
 	value
 		.replaceAll('&', '&amp;')
@@ -799,6 +841,7 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, la
 		published: data.published !== false,
 		category:
 			typeof data.category === 'string' && data.category.trim() !== '' ? data.category : 'Notes',
+		tags: normalizeTags(data.tags),
 		locale: targetLocale,
 		sourcePath: toPosixPath(path.relative(projectRoot, sourceFile)),
 		sourceHash,

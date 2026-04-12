@@ -87,6 +87,45 @@ const toAbsolutePath = (filePath) =>
 
 const isTruthy = (value) => value !== false;
 const hashFragment = (value) => createHash('sha1').update(value).digest('hex').slice(0, 8);
+const parseTagString = (value) => {
+	const trimmed = value.trim();
+
+	if (trimmed === '') {
+		return [];
+	}
+
+	if (trimmed.includes('#')) {
+		return trimmed.split(/[\s,]+/).filter(Boolean);
+	}
+
+	return trimmed.split(',');
+};
+const normalizeTag = (value) => {
+	if (typeof value !== 'string') {
+		return null;
+	}
+
+	const tag = value.trim().replace(/^#+/, '').trim();
+
+	return tag === '' ? null : tag;
+};
+const normalizeTags = (tags) => {
+	const values = Array.isArray(tags)
+		? tags.flatMap((tag) => (typeof tag === 'string' ? parseTagString(tag) : [tag]))
+		: typeof tags === 'string'
+			? parseTagString(tags)
+			: [];
+	const seen = new Set();
+
+	return values.map(normalizeTag).filter((tag) => {
+		if (!tag || seen.has(tag.toLowerCase())) {
+			return false;
+		}
+
+		seen.add(tag.toLowerCase());
+		return true;
+	});
+};
 
 const slugToReleaseTag = (slug) => {
 	const normalized = slug.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
@@ -136,6 +175,7 @@ const readPostDocument = async (filePath, localeFallback) => {
 		description,
 		date,
 		category,
+		tags: normalizeTags(data.tags),
 		content: content.trim(),
 		locale,
 		published: isTruthy(data.published),
@@ -163,6 +203,7 @@ const buildReleaseBody = (post) => {
 		'',
 		`- Date: ${post.date}`,
 		`- Category: ${post.category}`,
+		...(post.tags.length > 0 ? [`- Tags: ${post.tags.map((tag) => `#${tag}`).join(', ')}`] : []),
 		`- Locale: ${post.locale}`
 	];
 

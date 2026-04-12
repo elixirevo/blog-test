@@ -37,12 +37,27 @@ DEEPL_API_KEY=your-key bun run translate:posts
 - `src/content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
 - `static/uploads`: CMS 업로드 이미지
 
+포스트 frontmatter에는 카테고리와 별도로 여러 태그를 둘 수 있습니다. 태그는 `#` 없이 저장해도 화면에는 `#dev`처럼 표시됩니다. `#dev` 형태로 직접 쓰고 싶다면 YAML 주석으로 해석되지 않도록 따옴표로 감싸야 합니다.
+
+```yaml
+category: Technical
+tags:
+  - dev
+  - git
+```
+
+한 줄 해시태그 형태도 가능합니다.
+
+```yaml
+tags: '#dev #git'
+```
+
 ## Search
 
 - `/search`: Pagefind 기반 전체 검색 페이지
 - `/<locale>/search`: 등록된 번역 언어별 검색 페이지
 - 게시글 상세 페이지의 제목, 설명, 본문이 검색 인덱스에 포함됩니다.
-- 카테고리와 로케일은 Pagefind filter로 노출됩니다.
+- 카테고리, 태그, 로케일은 Pagefind filter로 노출됩니다.
 
 ## GitHub Pages setup
 

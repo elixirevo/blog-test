@@ -25,15 +25,18 @@ export const GET = () => {
 	const items = posts
 		.map((post) => {
 			const link = toAbsoluteUrl(siteConfig, `/blog/${post.slug}/`);
+			const categories = [post.category, ...post.tags]
+				.map((category) => `		<category>${escapeXml(category)}</category>`)
+				.join('\n');
 
 			return `<item>
-	<title>${escapeXml(post.title)}</title>
+		<title>${escapeXml(post.title)}</title>
 	<link>${escapeXml(link)}</link>
 	<guid>${escapeXml(link)}</guid>
-	<description>${escapeXml(post.excerpt)}</description>
-	<pubDate>${new Date(post.date).toUTCString()}</pubDate>
-	<category>${escapeXml(post.category)}</category>
-</item>`;
+		<description>${escapeXml(post.excerpt)}</description>
+		<pubDate>${new Date(post.date).toUTCString()}</pubDate>
+${categories}
+	</item>`;
 		})
 		.join('\n');
 

@@ -50,6 +50,7 @@
 			datePublished: post.date,
 			dateModified: post.date,
 			articleSection: post.category,
+			keywords: post.tags,
 			inLanguage: site.language,
 			url: canonicalUrl,
 			mainEntityOfPage: {
@@ -184,6 +185,9 @@
 	<meta property="article:modified_time" content={post.date} />
 	<meta property="article:author" content={site.author} />
 	<meta property="article:section" content={post.category} />
+	{#each post.tags as tag (tag)}
+		<meta property="article:tag" content={tag} />
+	{/each}
 	{#if coverUrl}
 		<meta property="og:image" content={coverUrl} />
 	{/if}
@@ -195,8 +199,14 @@
 	{/if}
 	<meta data-pagefind-filter={`Category:${post.category}`} />
 	<meta data-pagefind-filter={`Locale:${locale}`} />
+	{#each post.tags as tag (tag)}
+		<meta data-pagefind-filter={`Tag:${tag}`} />
+	{/each}
 	<meta data-pagefind-meta={`Category:${post.category}`} />
 	<meta data-pagefind-meta={`Locale:${locale}`} />
+	{#if post.tags.length > 0}
+		<meta data-pagefind-meta={`Tags:${post.tags.map((tag) => `#${tag}`).join(' ')}`} />
+	{/if}
 	<meta data-pagefind-meta={`Published:${post.formattedDate}`} />
 	<meta data-pagefind-sort={`date:${post.date}`} />
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -231,6 +241,13 @@
 				<p class="article-desc font-body">
 					"{post.description}"
 				</p>
+				{#if post.tags.length > 0}
+					<div class="article-tags font-label">
+						{#each post.tags as tag (tag)}
+							<span class="article-tag">#{tag}</span>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</header>
 

@@ -14,9 +14,9 @@ content:
       field: create
     view:
       primary: title
-      fields: [title, date, category, published]
+      fields: [title, date, category, tags, published]
       sort: [date, title, category]
-      search: [title, description, category]
+      search: [title, description, category, tags]
       default:
         sort: date
         order: desc
@@ -45,6 +45,13 @@ content:
           search: title
           value: '{title}'
           label: '{title}'
+      - name: tags
+        label: Tags
+        type: select
+        options:
+          multiple: true
+          creatable: true
+          values: [dev, git, sveltekit, github-pages, ai, cms]
       - name: cover
         label: Cover image
         type: image

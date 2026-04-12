@@ -16,6 +16,7 @@
 	let { locale, site, ui, posts }: Props = $props();
 
 	let activeCategory = $state<string | null>(null);
+	let activeTag = $state<string | null>(null);
 	const selectedCategory = $derived(activeCategory ?? ui.home.allCategory);
 	const canonicalPath = $derived(toLocalePathname('/', locale));
 	const canonicalUrl = $derived(toAbsoluteUrl(site, canonicalPath));
@@ -37,9 +38,20 @@
 		)
 	]);
 
+	const tags = $derived([
+		...new Set(
+			posts
+				.flatMap((post) => post.tags)
+				.filter(Boolean)
+				.sort((left, right) => left.localeCompare(right))
+		)
+	]);
+
 	const filteredPosts = $derived(
 		posts.filter(
-			(post) => selectedCategory === ui.home.allCategory || post.category === selectedCategory
+			(post) =>
+				(selectedCategory === ui.home.allCategory || post.category === selectedCategory) &&
+				(!activeTag || post.tags.includes(activeTag))
 		)
 	);
 
@@ -91,7 +103,7 @@
 
 <div class="container-small">
 	<header>
-		<div class="filter-group">
+		<div class="filter-group category-filter-group {tags.length > 0 ? 'has-tag-filter' : ''}">
 			{#each categories as category (category)}
 				<button
 					type="button"
@@ -104,6 +116,21 @@
 				</button>
 			{/each}
 		</div>
+		{#if tags.length > 0}
+			<div class="filter-group tag-filter-group" aria-label="Tags">
+				{#each tags as tag (tag)}
+					<button
+						type="button"
+						class="filter-btn tag-filter-btn font-label {tag === activeTag ? 'active' : ''}"
+						onclick={() => {
+							activeTag = activeTag === tag ? null : tag;
+						}}
+					>
+						#{tag}
+					</button>
+				{/each}
+			</div>
+		{/if}
 	</header>
 
 	<section class="post-list" aria-label="Recent posts">
@@ -116,6 +143,13 @@
 					<h2 class="post-title font-body">
 						<a href={resolve(postPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
 					</h2>
+					{#if post.tags.length > 0}
+						<div class="post-tags font-label">
+							{#each post.tags as tag (tag)}
+								<span class="post-tag">#{tag}</span>
+							{/each}
+						</div>
+					{/if}
 				</article>
 			{/each}
 		{:else}
@@ -126,6 +160,7 @@
 					class="font-label"
 					onclick={() => {
 						activeCategory = null;
+						activeTag = null;
 					}}
 				>
 					{ui.home.viewAll}
