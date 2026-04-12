@@ -205,7 +205,7 @@
 	<meta data-pagefind-meta={`Category:${post.category}`} />
 	<meta data-pagefind-meta={`Locale:${locale}`} />
 	{#if post.tags.length > 0}
-		<meta data-pagefind-meta={`Tags:${post.tags.map((tag) => `#${tag}`).join(' ')}`} />
+		<meta data-pagefind-meta={`Tags:${post.tags.join(', ')}`} />
 	{/if}
 	<meta data-pagefind-meta={`Published:${post.formattedDate}`} />
 	<meta data-pagefind-sort={`date:${post.date}`} />
@@ -244,7 +244,7 @@
 				{#if post.tags.length > 0}
 					<div class="article-tags font-label">
 						{#each post.tags as tag (tag)}
-							<span class="article-tag">#{tag}</span>
+							<span class="article-tag">{tag}</span>
 						{/each}
 					</div>
 				{/if}

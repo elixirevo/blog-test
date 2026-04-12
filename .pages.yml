@@ -47,11 +47,13 @@ content:
           label: '{title}'
       - name: tags
         label: Tags
-        type: select
+        type: reference
         options:
+          collection: tags
           multiple: true
-          creatable: true
-          values: [dev, git, sveltekit, github-pages, ai, cms]
+          search: title
+          value: '{title}'
+          label: '{title}'
       - name: cover
         label: Cover image
         type: image
@@ -68,6 +70,25 @@ content:
     label: Categories
     type: collection
     path: src/content/categories
+    filename:
+      template: '{title}.md'
+      field: create
+    view:
+      primary: title
+      fields: [title]
+      sort: [title]
+      search: [title]
+      default:
+        sort: title
+        order: asc
+    fields:
+      - name: title
+        label: Title
+        type: string
+  - name: tags
+    label: Tags
+    type: collection
+    path: src/content/tags
     filename:
       template: '{title}.md'
       field: create

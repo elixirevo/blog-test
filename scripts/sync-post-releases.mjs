@@ -203,7 +203,7 @@ const buildReleaseBody = (post) => {
 		'',
 		`- Date: ${post.date}`,
 		`- Category: ${post.category}`,
-		...(post.tags.length > 0 ? [`- Tags: ${post.tags.map((tag) => `#${tag}`).join(', ')}`] : []),
+		...(post.tags.length > 0 ? [`- Tags: ${post.tags.join(', ')}`] : []),
 		`- Locale: ${post.locale}`
 	];
 
