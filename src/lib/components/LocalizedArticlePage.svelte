@@ -262,8 +262,8 @@
 			{@html articleHtml}
 		</div>
 
-		{#key `${locale}:${post.slug}`}
-			<GiscusComments {site} {ui} term={`post:${post.slug}`} />
+		{#key `${locale}:${post.giscusTerm}`}
+			<GiscusComments {site} {ui} term={post.giscusTerm} />
 		{/key}
 
 		{#if relatedPosts.length > 0}

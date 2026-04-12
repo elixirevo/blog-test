@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
 import hljs from 'highlight.js';
 import { marked, type Tokens } from 'marked';
@@ -89,14 +90,18 @@ type ParsedPost = {
 	tags: string[];
 	cover: string | null;
 	excerpt: string;
+	giscusTerm: string;
 	html: string;
 	timestamp: number;
 };
 
 export type BlogPost = Omit<ParsedPost, 'published' | 'timestamp'>;
-export type PostSummary = Omit<ParsedPost, 'html' | 'published' | 'timestamp'>;
+export type PostSummary = Omit<ParsedPost, 'giscusTerm' | 'html' | 'published' | 'timestamp'>;
 
 const toSlug = (path: string) => path.split('/').at(-1)?.replace(/\.md$/, '') ?? path;
+
+const createGiscusTerm = (slug: string) =>
+	`giscus-post-${createHash('sha256').update(slug).digest('hex').slice(0, 16)}`;
 
 const getTranslationLocaleFromPath = (path: string): Locale | null => {
 	const match = path.match(/\/src\/content\/translations\/([^/]+)\/posts\//);
@@ -222,6 +227,7 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		tags: normalizeTags(frontmatter.tags),
 		cover: normalizeCover(frontmatter.cover),
 		excerpt: createExcerpt(frontmatter.description, content),
+		giscusTerm: createGiscusTerm(slug),
 		html: marked.parse(content) as string,
 		timestamp
 	};
@@ -277,6 +283,7 @@ const toSummary = (post: ParsedPost): PostSummary => ({
 
 const toBlogPost = (post: ParsedPost): BlogPost => ({
 	...toSummary(post),
+	giscusTerm: post.giscusTerm,
 	html: post.html
 });
 

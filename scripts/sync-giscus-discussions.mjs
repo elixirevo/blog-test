@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -149,6 +150,9 @@ const buildPostPath = (locale, slug) => {
 		: `/${normalizeLocale(locale)}/blog/${encodedSlug}/`;
 };
 
+const createGiscusTerm = (slug) =>
+	`giscus-post-${createHash('sha256').update(slug).digest('hex').slice(0, 16)}`;
+
 const readPostMetadata = async (filePath, slug, locale) => {
 	const raw = await readFile(filePath, 'utf8');
 	const { data } = matter(raw);
@@ -216,14 +220,18 @@ const readDiscussionPosts = async () => {
 	return posts;
 };
 
-const getTerm = (post) => `post:${post.sourceSlug}`;
+const getTerm = (post) => createGiscusTerm(post.sourceSlug);
 
 const extractDiscussionTerm = (discussion) => {
-	if (discussion.title.startsWith('post:')) {
+	if (discussion.title.startsWith('giscus-post-') || discussion.title.startsWith('post:')) {
 		return discussion.title;
 	}
 
-	return discussion.bodyText?.match(/giscus term:\s*(post:\S+)/)?.[1] ?? null;
+	const termLine = discussion.bodyText
+		?.split(/\r?\n/)
+		.find((line) => line.trim().startsWith('giscus term:'));
+
+	return termLine?.replace(/^.*?giscus term:\s*/, '').trim() || null;
 };
 
 const fetchExistingDiscussionTerms = async () => {
