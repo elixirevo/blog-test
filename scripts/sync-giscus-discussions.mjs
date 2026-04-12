@@ -224,18 +224,13 @@ const getTerm = (post) => createGiscusTerm(post.sourceSlug);
 const getDiscussionTitle = (post) => `${post.title} [${getTerm(post)}]`;
 const termPattern = /(giscus-post-[a-f0-9]{16}|post:\S+)/;
 
-const extractDiscussionTerm = (discussion) => {
-	const titleTerm = discussion.title.match(termPattern)?.[1];
+const extractTitleTerm = (discussion) => discussion.title.match(termPattern)?.[1] ?? null;
+const extractBodyTerm = (discussion) =>
+	discussion.bodyText?.match(/giscus term:\s*(\S+)/)?.[1] ?? null;
 
-	if (titleTerm) {
-		return titleTerm;
-	}
-
-	return discussion.bodyText?.match(/giscus term:\s*(\S+)/)?.[1] ?? null;
-};
-
-const fetchExistingDiscussionsByTerm = async () => {
-	const discussionsByTerm = new Map();
+const fetchExistingDiscussionTerms = async () => {
+	const linkedTerms = new Set();
+	const bodyOnlyTerms = new Set();
 	let cursor = null;
 
 	do {
@@ -249,7 +244,6 @@ const fetchExistingDiscussionsByTerm = async () => {
 							orderBy: { field: CREATED_AT, direction: DESC }
 						) {
 							nodes {
-								id
 								title
 								bodyText
 							}
@@ -270,17 +264,24 @@ const fetchExistingDiscussionsByTerm = async () => {
 
 		const discussions = data.repository.discussions;
 		for (const discussion of discussions.nodes) {
-			const term = extractDiscussionTerm(discussion);
+			const titleTerm = extractTitleTerm(discussion);
 
-			if (term) {
-				discussionsByTerm.set(term, discussion);
+			if (titleTerm) {
+				linkedTerms.add(titleTerm);
+				continue;
+			}
+
+			const bodyTerm = extractBodyTerm(discussion);
+
+			if (bodyTerm) {
+				bodyOnlyTerms.add(bodyTerm);
 			}
 		}
 
 		cursor = discussions.pageInfo.hasNextPage ? discussions.pageInfo.endCursor : null;
 	} while (cursor);
 
-	return discussionsByTerm;
+	return { bodyOnlyTerms, linkedTerms };
 };
 
 const buildDiscussionBody = (post) => {
@@ -331,53 +332,33 @@ const createDiscussion = async (post) => {
 	);
 };
 
-const updateDiscussionTitle = async (discussion, post) => {
-	await graphql(
-		`
-			mutation UpdateGiscusDiscussionTitle($discussionId: ID!, $title: String!) {
-				updateDiscussion(input: { discussionId: $discussionId, title: $title }) {
-					discussion {
-						id
-					}
-				}
-			}
-		`,
-		{
-			discussionId: discussion.id,
-			title: getDiscussionTitle(post)
-		}
-	);
-};
-
 const posts = await readDiscussionPosts();
-const existingDiscussionsByTerm = await fetchExistingDiscussionsByTerm();
+const { bodyOnlyTerms, linkedTerms } = await fetchExistingDiscussionTerms();
 let createdCount = 0;
-let updatedCount = 0;
 let skippedCount = 0;
+let unlinkedCount = 0;
 
 for (const post of posts) {
 	const term = getTerm(post);
-	const existingDiscussion = existingDiscussionsByTerm.get(term);
 
-	if (existingDiscussion) {
-		if (existingDiscussion.title !== getDiscussionTitle(post)) {
-			await updateDiscussionTitle(existingDiscussion, post);
-			updatedCount += 1;
-			console.log(`Updated giscus discussion title: ${term} (${post.locale})`);
-		}
-
+	if (linkedTerms.has(term)) {
 		skippedCount += 1;
 		continue;
 	}
 
+	if (bodyOnlyTerms.has(term)) {
+		unlinkedCount += 1;
+		console.warn(
+			`Found unlinked body-only giscus discussion for ${term}; creating a replacement with the term in the title.`
+		);
+	}
+
 	await createDiscussion(post);
-	existingDiscussionsByTerm.set(term, {
-		title: getDiscussionTitle(post)
-	});
+	linkedTerms.add(term);
 	createdCount += 1;
 	console.log(`Created giscus discussion: ${term} (${post.locale})`);
 }
 
 console.log(
-	`Giscus discussion sync complete. created=${createdCount} updated=${updatedCount} skipped=${skippedCount} total=${posts.length}`
+	`Giscus discussion sync complete. created=${createdCount} skipped=${skippedCount} unlinked=${unlinkedCount} total=${posts.length}`
 );
