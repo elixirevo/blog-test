@@ -39,6 +39,21 @@
 			? (localeOptions.find((localeOption) => localeOption !== routeLocale) ?? null)
 			: null
 	);
+	const currentRssPath = $derived(toLocalePathname('/rss.xml', routeLocale));
+	const rssLinks = $derived(
+		localeOptions.map((localeOption) => {
+			const localeSite = getSiteConfig(localeOption);
+
+			return {
+				href: resolve(toLocalePathname('/rss.xml', localeOption) as '/rss.xml'),
+				locale: localeOption,
+				title:
+					localeOptions.length > 1
+						? `${localeSite.title} (${getLocaleLabel(localeOption)})`
+						: localeSite.title
+			};
+		})
+	);
 
 	const syncThemeFromStorage = () => {
 		const prefersDark =
@@ -148,7 +163,9 @@
 <svelte:head>
 	<meta name="theme-color" content="#f9f9f9" />
 	<link rel="icon" href={favicon} />
-	<link rel="alternate" type="application/rss+xml" title={site.title} href={resolve('/rss.xml')} />
+	{#each rssLinks as rssLink (rssLink.locale)}
+		<link rel="alternate" type="application/rss+xml" title={rssLink.title} href={rssLink.href} />
+	{/each}
 </svelte:head>
 
 <div class="app-shell">
@@ -237,7 +254,7 @@
 				{site.title}. {site.footer}
 			</span>
 			<div class="footer-links font-label">
-				<a href={resolve('/rss.xml')}>{ui.footer.rss}</a>
+				<a href={resolve(currentRssPath as '/rss.xml')}>{ui.footer.rss}</a>
 				<a href="https://x.com" target="_blank">X</a>
 				<a href="https://github.com" target="_blank">GitHub</a>
 			</div>

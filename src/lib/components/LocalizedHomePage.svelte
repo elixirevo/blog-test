@@ -143,13 +143,6 @@
 					<h2 class="post-title font-body">
 						<a href={resolve(postPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
 					</h2>
-					{#if post.tags.length > 0}
-						<div class="post-tags font-label">
-							{#each post.tags as tag (tag)}
-								<span class="post-tag">{tag}</span>
-							{/each}
-						</div>
-					{/if}
 				</article>
 			{/each}
 		{:else}
