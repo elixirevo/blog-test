@@ -153,3 +153,5 @@ bun run build
 3. 생성된 값 중 `repo`, `repoId`, `category`, `categoryId`를 `.env.production`에 복사합니다.
 
 사이트의 다크모드 토글은 Giscus iframe 테마와 자동으로 동기화됩니다.
+
+배포 워크플로는 `post:<slug>`를 giscus `specific` mapping term으로 쓰고, `scripts/sync-giscus-discussions.mjs`로 원문 포스트별 Discussion을 미리 생성합니다. 이렇게 하면 번역 경로(`/en`, `/ja`, `/ar` 등)가 모두 같은 댓글 thread를 공유하고, 첫 댓글/반응 시점에 Discussion이 뒤늦게 생성되어 iframe을 새로고침해야 하는 상황을 피할 수 있습니다.

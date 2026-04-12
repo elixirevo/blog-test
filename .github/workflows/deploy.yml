@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  discussions: write
   pages: write
   id-token: write
 
@@ -90,6 +91,12 @@ jobs:
           git add src/content/translations
           git commit -m "chore(i18n): sync translations [skip ci]"
           git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Sync giscus discussions
+        run: bun ./scripts/sync-giscus-discussions.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build site
         run: bun run build

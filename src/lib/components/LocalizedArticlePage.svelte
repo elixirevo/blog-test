@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import GiscusComments from '$lib/components/GiscusComments.svelte';
 	import { toLocalePathname, type Locale, type UiCopy } from '$lib/i18n';
@@ -26,6 +26,7 @@
 
 	let headings = $state<{ id: string; text: string; level: number }[]>([]);
 	let activeId = $state('post-title');
+	let articleContent = $state<HTMLElement>();
 
 	const postPath = (postLocale: Locale, slug: string) =>
 		toLocalePathname(`/blog/${slug}/`, postLocale);
@@ -66,31 +67,70 @@
 		})
 	);
 
-	onMount(() => {
-		const contentEl = document.querySelector('.article-content');
-		if (contentEl) {
-			const els = contentEl.querySelectorAll('h2, h3');
-			const parsedHeadings: typeof headings = [];
+	const createHeadingId = (seed: string, index: number, usedIds: Set<string>) => {
+		const baseId =
+			seed
+				.trim()
+				.toLocaleLowerCase()
+				.normalize('NFKC')
+				.replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+				.replace(/^-+|-+$/g, '') || `heading-${index + 1}`;
+		let id = baseId;
+		let suffix = 2;
 
-			els.forEach((el, index) => {
-				if (!el.id) {
-					const textInfo = el.textContent || '';
-					el.id =
-						textInfo
-							.trim()
-							.toLowerCase()
-							.replace(/[^a-z0-9\uAC00-\uD7A3]+/g, '-') || `heading-${index}`;
-				}
-				parsedHeadings.push({
-					id: el.id,
-					text: el.textContent || '',
-					level: el.tagName === 'H2' ? 2 : 3
-				});
-			});
-
-			headings = parsedHeadings;
+		while (usedIds.has(id)) {
+			id = `${baseId}-${suffix}`;
+			suffix += 1;
 		}
 
+		usedIds.add(id);
+		return id;
+	};
+
+	const syncHeadings = () => {
+		if (!articleContent) {
+			headings = [];
+			activeId = 'post-title';
+			return;
+		}
+
+		const usedIds = new Set<string>();
+		const parsedHeadings = Array.from(
+			articleContent.querySelectorAll<HTMLHeadingElement>('h2, h3')
+		).map((el, index) => {
+			const id = createHeadingId(el.id || el.textContent || '', index, usedIds);
+			el.id = id;
+
+			return {
+				id,
+				text: el.textContent || '',
+				level: el.tagName === 'H2' ? 2 : 3
+			};
+		});
+
+		headings = parsedHeadings;
+
+		if (!headings.some((heading) => heading.id === activeId)) {
+			activeId = 'post-title';
+		}
+	};
+
+	$effect(() => {
+		const currentArticleHtml = articleHtml;
+		const currentArticleContent = articleContent;
+
+		if (!currentArticleContent) {
+			return;
+		}
+
+		void tick().then(() => {
+			if (currentArticleHtml === articleHtml && currentArticleContent === articleContent) {
+				syncHeadings();
+			}
+		});
+	});
+
+	onMount(() => {
 		const handleScroll = () => {
 			const scrollPos = window.scrollY + 160;
 			const titleEl = document.getElementById('post-title');
@@ -200,13 +240,13 @@
 			</figure>
 		{/if}
 
-		<div class="article-content" data-pagefind-body>
+		<div bind:this={articleContent} class="article-content" data-pagefind-body>
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			{@html articleHtml}
 		</div>
 
 		{#key `${locale}:${post.slug}`}
-			<GiscusComments {site} {ui} />
+			<GiscusComments {site} {ui} term={`post:${post.slug}`} />
 		{/key}
 
 		{#if relatedPosts.length > 0}

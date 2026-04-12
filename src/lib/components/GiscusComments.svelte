@@ -10,7 +10,7 @@
 		};
 	};
 
-	let { site, ui }: { site: SiteConfig; ui: UiCopy } = $props();
+	let { site, ui, term }: { site: SiteConfig; ui: UiCopy; term: string } = $props();
 
 	let container = $state<HTMLDivElement | null>(null);
 	let theme = $state('light');
@@ -53,6 +53,7 @@
 		}
 
 		const config = getConfig();
+		const discussionTerm = term.trim();
 		const script = document.createElement('script');
 		script.src = 'https://giscus.app/client.js';
 		script.async = true;
@@ -61,7 +62,8 @@
 		script.setAttribute('data-repo-id', config.repoId);
 		script.setAttribute('data-category', config.category);
 		script.setAttribute('data-category-id', config.categoryId);
-		script.setAttribute('data-mapping', 'pathname');
+		script.setAttribute('data-mapping', 'specific');
+		script.setAttribute('data-term', discussionTerm);
 		script.setAttribute('data-strict', '0');
 		script.setAttribute('data-reactions-enabled', '1');
 		script.setAttribute('data-emit-metadata', '0');
