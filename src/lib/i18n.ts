@@ -72,7 +72,7 @@ const englishUiCopy: UiCopy = {
 		label: 'Conversation',
 		title: 'Join the discussion',
 		emptyMessage:
-			'Fill in `giscusRepo`, `giscusRepoId`, `giscusCategory`, and `giscusCategoryId` in `site.json` to enable comments.'
+			'Fill in `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`, and `PUBLIC_GISCUS_CATEGORY_ID` in `.env.production` to enable comments.'
 	},
 	search: {
 		eyebrow: 'Search',
@@ -171,7 +171,7 @@ const uiCopy: Record<string, UiCopy> = {
 			label: 'Conversation',
 			title: '의견을 남겨보세요',
 			emptyMessage:
-				'`site.json`에 `giscusRepo`, `giscusRepoId`, `giscusCategory`, `giscusCategoryId`를 채우면 댓글이 활성화됩니다.'
+				'`.env.production`에 `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`, `PUBLIC_GISCUS_CATEGORY_ID`를 채우면 댓글이 활성화됩니다.'
 		},
 		search: {
 			eyebrow: 'Search',

@@ -1,4 +1,4 @@
-# Elixir Evo Journal
+# SvelteKit Static Blog Template
 
 SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`으로 전체 사이트를 prerender하고, GitHub Pages에 GitHub Actions로 배포하며, Pages CMS에서 Markdown 콘텐츠를 편집할 수 있게 구성되어 있습니다.
 
@@ -32,7 +32,8 @@ DEEPL_API_KEY=your-key bun run translate:posts
 
 ## Content structure
 
-- `src/content/site.json`: 사이트 제목, 설명, URL 같은 메타 정보
+- `.env.production`: 배포 시 사용하는 공개 사이트 설정
+- `src/content/site.json`: env가 비어 있을 때 쓰는 사이트 메타 fallback
 - `src/content/posts/*.md`: frontmatter + Markdown 본문
 - `src/content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
 - `static/uploads`: CMS 업로드 이미지
@@ -66,10 +67,10 @@ tags: 'dev, git'
 1. 저장소를 GitHub에 푸시합니다.
 2. GitHub 저장소의 `Settings > Pages`에서 `Source`를 `GitHub Actions`로 설정합니다.
 3. 기본 브랜치가 `main`인지 확인합니다.
-4. `src/content/site.json`의 `url`을 실제 배포 URL로 바꿉니다.
+4. `.env.production`의 `PUBLIC_SITE_URL`을 실제 배포 URL로 바꿉니다.
 5. 저장소 `Secrets and variables > Actions`에 `DEEPL_API_KEY`를 추가합니다.
 6. DeepL Free를 쓰면 선택적으로 `DEEPL_API_URL=https://api-free.deepl.com`도 추가합니다.
-7. 공개 설정 파일 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 원문/번역 언어와 릴리즈 언어를 등록합니다.
+7. 공개 설정 파일 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 사이트 메타, 원문/번역 언어, 릴리즈 언어를 등록합니다.
 
 프로젝트 Pages 저장소라면 빌드 시 `GITHUB_REPOSITORY` 값을 읽어 자동으로 base path를 맞춥니다. 사용자/조직 루트 Pages 저장소라면 base path는 빈 문자열로 유지됩니다.
 
@@ -95,6 +96,32 @@ SITE_BASE_PATH=blog bun run build
 - 카테고리: `Categories` 컬렉션에서 먼저 생성한 뒤 게시글에서 선택
 - 발행일: 초 단위까지 포함한 datetime 입력
 - 글 목록: 최신 `date` 기준으로 기본 정렬
+
+## Site configuration
+
+템플릿을 배포할 때 바뀌어야 하는 공개 설정은 `.env.production`에서 관리합니다. `src/content/site.json`은 값이 비어 있거나 로컬에서 env를 로드하지 않을 때 쓰는 fallback입니다.
+
+```sh
+PUBLIC_SITE_TITLE="My Blog"
+PUBLIC_SITE_TAGLINE="Notes and essays"
+PUBLIC_SITE_DESCRIPTION="A static blog built with SvelteKit."
+PUBLIC_SITE_OWNER="Your Name"
+PUBLIC_SITE_FOOTER="Built with SvelteKit."
+PUBLIC_SITE_URL=https://example.com
+PUBLIC_SOCIAL_X_URL=https://x.com/your-handle
+PUBLIC_SOCIAL_GITHUB_URL=https://github.com/your-name
+```
+
+언어별 메타 문구를 따로 두고 싶으면 locale suffix를 붙입니다. 하이픈이 있는 locale은 `_`로 바꿉니다.
+
+```sh
+PUBLIC_SITE_DESCRIPTION_EN="A static blog built with SvelteKit."
+PUBLIC_SITE_TAGLINE_EN="Notes and essays"
+PUBLIC_SITE_FOOTER_EN="Built with SvelteKit."
+PUBLIC_SITE_DESCRIPTION_JA="SvelteKitで構築した静的ブログです。"
+```
+
+`PUBLIC_SITE_AUTHOR`도 같은 값으로 인식됩니다. 둘 다 있으면 `PUBLIC_SITE_AUTHOR`가 우선합니다.
 
 ## Translation workflow
 
@@ -148,15 +175,15 @@ DeepL 언어 코드는 기본 매핑을 사용합니다. 필요하면 `DEEPL_SOU
 - `PUBLIC_GISCUS_CATEGORY`: 댓글을 저장할 GitHub Discussions 카테고리 이름
 - `PUBLIC_GISCUS_CATEGORY_ID`: 해당 카테고리 ID
 
-현재 값은 이미 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 들어 있습니다. 이 파일은 공개 설정 전용으로 커밋됩니다.
+값은 [`.env.production`](/Users/elixir/dev/project/elixirevo/blog/.env.production)에 넣습니다. 이 파일은 공개 설정 전용으로 커밋됩니다.
 
 ```sh
 .env.production
 
-PUBLIC_GISCUS_REPO=elixirevo/blog-test
-PUBLIC_GISCUS_REPO_ID=R_kgDOR9vpNw
+PUBLIC_GISCUS_REPO=owner/repo
+PUBLIC_GISCUS_REPO_ID=your-repo-id
 PUBLIC_GISCUS_CATEGORY=General
-PUBLIC_GISCUS_CATEGORY_ID=DIC_kwDOR9vpN84C6b0s
+PUBLIC_GISCUS_CATEGORY_ID=your-category-id
 PUBLIC_SOURCE_LOCALE=ko
 PUBLIC_TRANSLATION_LOCALES=en,zh,ja,ar
 PUBLIC_RELEASE_LOCALE=en

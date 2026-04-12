@@ -4,7 +4,6 @@
 	import { base, resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import SearchModal from '$lib/components/SearchModal.svelte';
-	import favicon from '$lib/assets/favicon.svg';
 	import {
 		getLocaleFromPathname,
 		getPreferredLocale,
@@ -163,7 +162,6 @@
 
 <svelte:head>
 	<meta name="theme-color" content="#f9f9f9" />
-	<link rel="icon" href={favicon} />
 	{#each rssLinks as rssLink (rssLink.locale)}
 		<link rel="alternate" type="application/rss+xml" title={rssLink.title} href={rssLink.href} />
 	{/each}
@@ -256,8 +254,10 @@
 			</span>
 			<div class="footer-links font-label">
 				<a href={resolve(currentRssPath as '/rss.xml')}>{ui.footer.rss}</a>
-				<a href="https://x.com" target="_blank">X</a>
-				<a href="https://github.com" target="_blank">GitHub</a>
+				{#each site.socialLinks as socialLink (socialLink.href)}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={socialLink.href} target="_blank" rel="noreferrer">{socialLink.label}</a>
+				{/each}
 			</div>
 		</div>
 	</footer>

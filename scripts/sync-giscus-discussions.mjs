@@ -46,9 +46,7 @@ const repoFullName =
 	process.env.PUBLIC_GISCUS_REPO?.trim() || process.env.GITHUB_REPOSITORY?.trim() || '';
 const repositoryId = process.env.PUBLIC_GISCUS_REPO_ID?.trim() ?? '';
 const categoryId = process.env.PUBLIC_GISCUS_CATEGORY_ID?.trim() ?? '';
-const siteUrl =
-	process.env.PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ||
-	'https://elixirevo.github.io/blog-test';
+const siteUrl = process.env.PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') || 'https://example.com';
 
 const normalizeLocale = (value, fallback = 'ko') => {
 	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
