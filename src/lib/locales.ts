@@ -68,7 +68,7 @@ export const normalizeLocale = (value: string | undefined, fallback = 'ko'): Loc
 	return normalized === '' ? fallback : normalized;
 };
 
-export const parseLocaleList = (value: string | undefined): Locale[] => {
+const parseLocaleList = (value: string | undefined): Locale[] => {
 	const seen = new Set<Locale>();
 
 	return (value ?? '')
@@ -86,25 +86,20 @@ export const parseLocaleList = (value: string | undefined): Locale[] => {
 
 export const sourceLocale = normalizeLocale(publicEnv.PUBLIC_SOURCE_LOCALE, 'en');
 
-export const translationLocales = parseLocaleList(
+const translationLocales = parseLocaleList(
 	publicEnv.PUBLIC_TRANSLATION_LOCALES ?? publicEnv.PUBLIC_TRANSLATION_LOCALE ?? ''
 ).filter((locale) => locale !== sourceLocale);
 
-export const configuredLocales = [sourceLocale, ...translationLocales];
+const configuredLocales = [sourceLocale, ...translationLocales];
 
 export const getConfiguredLocales = (): Locale[] => configuredLocales;
 
 export const getTranslationLocales = (): Locale[] => translationLocales;
 
-export const isSourceLocale = (locale: string): boolean => normalizeLocale(locale) === sourceLocale;
-
 export const isTranslationLocale = (locale: string | undefined): locale is Locale =>
 	locale !== undefined && translationLocales.includes(normalizeLocale(locale));
 
-export const isConfiguredLocale = (locale: string | undefined): locale is Locale =>
-	locale !== undefined && configuredLocales.includes(normalizeLocale(locale));
-
-export const getLocaleMetadata = (locale: Locale): LocaleMetadata => {
+const getLocaleMetadata = (locale: Locale): LocaleMetadata => {
 	const normalized = normalizeLocale(locale);
 	const base = normalized.split('-')[0] ?? normalized;
 

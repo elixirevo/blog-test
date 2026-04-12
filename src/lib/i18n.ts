@@ -1,6 +1,5 @@
 import {
-	configuredLocales,
-	getTranslationLocales,
+	getConfiguredLocales,
 	isTranslationLocale,
 	normalizeLocale,
 	sourceLocale,
@@ -51,9 +50,6 @@ export type UiCopy = {
 		rss: string;
 	};
 };
-
-export const supportedLocales = configuredLocales;
-export const defaultLocale: Locale = sourceLocale;
 
 const englishUiCopy: UiCopy = {
 	nav: {
@@ -237,7 +233,7 @@ export const getLocaleFromPathname = (pathname: string): Locale => {
 	return isTranslationLocale(segment) ? normalizeLocale(segment) : sourceLocale;
 };
 
-export const stripLocalePrefix = (pathname: string): string => {
+const stripLocalePrefix = (pathname: string): string => {
 	const segments = pathname.split('/').filter(Boolean);
 
 	if (isTranslationLocale(segments[0])) {
@@ -270,6 +266,8 @@ export const withBasePath = (pathname: string, basePath: string): string =>
 	basePath === '' ? pathname : `${basePath}${pathname === '/' ? '/' : pathname}`;
 
 export const getPreferredLocale = (languages: readonly string[]): Locale => {
+	const configuredLocales = getConfiguredLocales();
+
 	for (const language of languages) {
 		const normalized = normalizeLocale(language, '');
 		const base = normalized.split('-')[0] ?? normalized;
@@ -286,4 +284,4 @@ export const getPreferredLocale = (languages: readonly string[]): Locale => {
 };
 
 export const isLocale = (value: string): value is Locale =>
-	configuredLocales.includes(normalizeLocale(value)) || getTranslationLocales().includes(value);
+	getConfiguredLocales().includes(normalizeLocale(value));

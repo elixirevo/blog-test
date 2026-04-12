@@ -11,7 +11,7 @@ const escapeXml = (value: string) =>
 		.replaceAll('"', '&quot;')
 		.replaceAll("'", '&apos;');
 
-export const getRssPath = (locale: Locale) => toLocalePathname('/rss.xml', locale);
+const getRssPath = (locale: Locale) => toLocalePathname('/rss.xml', locale);
 
 export const createRssResponse = (locale: Locale) => {
 	const siteConfig = getSiteConfig(locale);

@@ -15,7 +15,7 @@ const toRelativePath = (pathname: string) => {
 export const toAbsoluteUrl = (site: SiteUrlConfig, pathname: string) =>
 	new URL(toRelativePath(pathname), `${normalizeSiteUrl(site.url)}/`).toString();
 
-export const stringifyJsonLd = (value: unknown) => JSON.stringify(value).replaceAll('<', '\\u003c');
+const stringifyJsonLd = (value: unknown) => JSON.stringify(value).replaceAll('<', '\\u003c');
 
 export const toJsonLdScript = (value: unknown) =>
 	`<script type="application/ld+json">${stringifyJsonLd(value)}</script>`;

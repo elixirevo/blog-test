@@ -76,5 +76,3 @@ export const getSiteConfig = (locale: Locale): SiteConfig => {
 		locale: normalizedLocale
 	};
 };
-
-export const siteConfig = getSiteConfig(sourceLocale);

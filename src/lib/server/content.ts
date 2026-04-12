@@ -70,11 +70,6 @@ type Frontmatter = {
 	category?: string;
 	tags?: string[] | string;
 	cover?: string;
-	locale?: string;
-	sourceHash?: string;
-	sourcePath?: string;
-	translationSource?: string;
-	translatedAt?: string;
 };
 
 type ParsedPost = {
