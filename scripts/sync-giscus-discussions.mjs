@@ -141,6 +141,14 @@ const encodeSlugForUrl = (slug) =>
 		.map((segment) => encodeURIComponent(segment))
 		.join('/');
 
+const buildPostPath = (locale, slug) => {
+	const encodedSlug = encodeSlugForUrl(slug);
+
+	return normalizeLocale(locale) === sourceLocale
+		? `/blog/${encodedSlug}/`
+		: `/${normalizeLocale(locale)}/blog/${encodedSlug}/`;
+};
+
 const readPostMetadata = async (filePath, slug, locale) => {
 	const raw = await readFile(filePath, 'utf8');
 	const { data } = matter(raw);
@@ -267,7 +275,7 @@ const fetchExistingDiscussionTerms = async () => {
 };
 
 const buildDiscussionBody = (post) => {
-	const canonicalUrl = `${siteUrl}/blog/${encodeSlugForUrl(post.sourceSlug)}/`;
+	const canonicalUrl = `${siteUrl}${buildPostPath(post.locale, post.sourceSlug)}`;
 	const term = getTerm(post);
 
 	return [
