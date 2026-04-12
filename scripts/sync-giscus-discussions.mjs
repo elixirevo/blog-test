@@ -49,6 +49,37 @@ const siteUrl =
 	process.env.PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ||
 	'https://elixirevo.github.io/blog-test';
 
+const normalizeLocale = (value, fallback = 'ko') => {
+	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
+
+	return normalized === '' ? fallback : normalized;
+};
+
+const parseLocaleList = (value) => {
+	const seen = new Set();
+
+	return (value ?? '')
+		.split(',')
+		.map((locale) => normalizeLocale(locale, ''))
+		.filter((locale) => {
+			if (locale === '' || seen.has(locale)) {
+				return false;
+			}
+
+			seen.add(locale);
+			return true;
+		});
+};
+
+const getLocaleBase = (locale) => normalizeLocale(locale, '').split('-')[0] ?? '';
+const sourceLocale = normalizeLocale(process.env.PUBLIC_SOURCE_LOCALE, 'ko');
+const translationLocales = parseLocaleList(
+	process.env.PUBLIC_TRANSLATION_LOCALES || process.env.PUBLIC_TRANSLATION_LOCALE
+).filter((locale) => locale !== sourceLocale);
+const englishTranslationLocale = translationLocales.find(
+	(locale) => getLocaleBase(locale) === 'en'
+);
+
 if (repoFullName === '' || repositoryId === '' || categoryId === '') {
 	console.log('Giscus repository or category settings are missing. Skipping discussion sync.');
 	process.exit(0);
@@ -110,7 +141,48 @@ const encodeSlugForUrl = (slug) =>
 		.map((segment) => encodeURIComponent(segment))
 		.join('/');
 
-const readSourcePosts = async () => {
+const readPostMetadata = async (filePath, slug, locale) => {
+	const raw = await readFile(filePath, 'utf8');
+	const { data } = matter(raw);
+	const title = typeof data.title === 'string' && data.title.trim() !== '' ? data.title : slug;
+	const description =
+		typeof data.description === 'string' && data.description.trim() !== ''
+			? data.description
+			: title;
+
+	return {
+		description,
+		locale,
+		slug,
+		title
+	};
+};
+
+const readEnglishTranslation = async (slug) => {
+	if (!englishTranslationLocale || getLocaleBase(sourceLocale) === 'en') {
+		return null;
+	}
+
+	const translationFile = path.join(
+		projectRoot,
+		'src/content/translations',
+		englishTranslationLocale,
+		'posts',
+		`${slug}.md`
+	);
+
+	try {
+		return await readPostMetadata(translationFile, slug, englishTranslationLocale);
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return null;
+		}
+
+		throw error;
+	}
+};
+
+const readDiscussionPosts = async () => {
 	const files = await listMarkdownFiles(sourceDir);
 	const posts = [];
 
@@ -123,24 +195,31 @@ const readSourcePosts = async () => {
 		}
 
 		const slug = path.basename(filePath, '.md');
-		const title = typeof data.title === 'string' && data.title.trim() !== '' ? data.title : slug;
-		const description =
-			typeof data.description === 'string' && data.description.trim() !== ''
-				? data.description
-				: title;
+		const sourcePost = await readPostMetadata(filePath, slug, sourceLocale);
+		const englishPost = await readEnglishTranslation(slug);
 
 		posts.push({
-			description,
-			slug,
-			title
+			...(englishPost ?? sourcePost),
+			sourceLocale,
+			sourceSlug: slug
 		});
 	}
 
 	return posts;
 };
 
-const fetchExistingDiscussionTitles = async () => {
-	const titles = new Set();
+const getTerm = (post) => `post:${post.sourceSlug}`;
+
+const extractDiscussionTerm = (discussion) => {
+	if (discussion.title.startsWith('post:')) {
+		return discussion.title;
+	}
+
+	return discussion.bodyText?.match(/giscus term:\s*(post:\S+)/)?.[1] ?? null;
+};
+
+const fetchExistingDiscussionTerms = async () => {
+	const terms = new Set();
 	let cursor = null;
 
 	do {
@@ -155,6 +234,7 @@ const fetchExistingDiscussionTitles = async () => {
 						) {
 							nodes {
 								title
+								bodyText
 							}
 							pageInfo {
 								hasNextPage
@@ -173,32 +253,36 @@ const fetchExistingDiscussionTitles = async () => {
 
 		const discussions = data.repository.discussions;
 		for (const discussion of discussions.nodes) {
-			titles.add(discussion.title);
+			const term = extractDiscussionTerm(discussion);
+
+			if (term) {
+				terms.add(term);
+			}
 		}
 
 		cursor = discussions.pageInfo.hasNextPage ? discussions.pageInfo.endCursor : null;
 	} while (cursor);
 
-	return titles;
+	return terms;
 };
 
 const buildDiscussionBody = (post) => {
-	const canonicalUrl = `${siteUrl}/blog/${encodeSlugForUrl(post.slug)}/`;
+	const canonicalUrl = `${siteUrl}/blog/${encodeSlugForUrl(post.sourceSlug)}/`;
+	const term = getTerm(post);
 
 	return [
-		`Comment thread for "${post.title}".`,
-		'',
 		post.description,
 		'',
-		`Canonical URL: ${canonicalUrl}`,
+		'---',
 		'',
-		`giscus term: post:${post.slug}`
+		`Canonical URL: ${canonicalUrl}`,
+		`Discussion locale: ${post.locale}`,
+		'',
+		`giscus term: ${term}`
 	].join('\n');
 };
 
 const createDiscussion = async (post) => {
-	const term = `post:${post.slug}`;
-
 	await graphql(
 		`
 			mutation CreateGiscusDiscussion(
@@ -225,28 +309,28 @@ const createDiscussion = async (post) => {
 			body: buildDiscussionBody(post),
 			categoryId,
 			repositoryId,
-			title: term
+			title: post.title
 		}
 	);
 };
 
-const posts = await readSourcePosts();
-const existingTitles = await fetchExistingDiscussionTitles();
+const posts = await readDiscussionPosts();
+const existingTerms = await fetchExistingDiscussionTerms();
 let createdCount = 0;
 let skippedCount = 0;
 
 for (const post of posts) {
-	const term = `post:${post.slug}`;
+	const term = getTerm(post);
 
-	if (existingTitles.has(term)) {
+	if (existingTerms.has(term)) {
 		skippedCount += 1;
 		continue;
 	}
 
 	await createDiscussion(post);
-	existingTitles.add(term);
+	existingTerms.add(term);
 	createdCount += 1;
-	console.log(`Created giscus discussion: ${term}`);
+	console.log(`Created giscus discussion: ${term} (${post.locale})`);
 }
 
 console.log(
