@@ -116,6 +116,13 @@ PUBLIC_RELEASE_LOCALE=en
 PUBLIC_RELEASE_USE_TRANSLATIONS=true
 ```
 
+번역을 끄고 원문만 배포하려면 `PUBLIC_TRANSLATION_LOCALES`를 비워둡니다.
+
+```sh
+PUBLIC_SOURCE_LOCALE=ko
+PUBLIC_TRANSLATION_LOCALES=
+```
+
 DeepL 언어 코드는 기본 매핑을 사용합니다. 필요하면 `DEEPL_SOURCE_LANG_<LOCALE>` 또는 `DEEPL_TARGET_LANG_<LOCALE>` 환경변수로 특정 언어만 덮어쓸 수 있습니다. DeepL `custom_instructions`는 일부 target 언어에서만 지원되므로, 아랍어처럼 미지원 언어는 해당 옵션을 빼고 번역합니다.
 
 ## Release workflow

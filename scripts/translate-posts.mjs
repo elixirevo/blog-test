@@ -42,7 +42,7 @@ const loadEnvFile = (filePath) => {
 
 loadEnvFile(path.join(projectRoot, '.env.production'));
 
-const normalizeLocale = (value, fallback = 'ko') => {
+const normalizeLocale = (value, fallback = 'en') => {
 	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
 
 	return normalized === '' ? fallback : normalized;
@@ -64,9 +64,9 @@ const parseLocaleList = (value) => {
 		});
 };
 
-const sourceLocale = normalizeLocale(process.env.PUBLIC_SOURCE_LOCALE, 'ko');
+const sourceLocale = normalizeLocale(process.env.PUBLIC_SOURCE_LOCALE, 'en');
 const targetLocales = parseLocaleList(
-	process.env.PUBLIC_TRANSLATION_LOCALES || process.env.PUBLIC_TRANSLATION_LOCALE || 'en'
+	process.env.PUBLIC_TRANSLATION_LOCALES ?? process.env.PUBLIC_TRANSLATION_LOCALE ?? ''
 ).filter((locale) => locale !== sourceLocale);
 
 const deeplLanguageCodes = {

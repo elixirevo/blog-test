@@ -23,12 +23,22 @@
 	const currentYear = new Date().getFullYear();
 	let isDarkMode = $state(false);
 	let isSearchOpen = $state(false);
+	let isLocaleMenuOpen = $state(false);
+	let localeMenuEl = $state<HTMLDivElement | null>(null);
 
 	const localeOptions = getConfiguredLocales();
 	const routeLocale = $derived(getLocaleFromPathname(stripBasePath(page.url.pathname, base)));
 	const site = $derived(getSiteConfig(routeLocale));
 	const ui = $derived(getUiCopy(routeLocale));
 	const homePath = $derived(toLocalePathname('/', routeLocale));
+	const currentLocaleLabel = $derived(getLocaleLabel(routeLocale));
+	const hasLocaleSwitcher = $derived(localeOptions.length > 1);
+	const shouldShowLocaleMenu = $derived(localeOptions.length > 2);
+	const pairedLocale = $derived(
+		localeOptions.length === 2
+			? (localeOptions.find((localeOption) => localeOption !== routeLocale) ?? null)
+			: null
+	);
 
 	const syncThemeFromStorage = () => {
 		const prefersDark =
@@ -41,6 +51,7 @@
 
 	afterNavigate(() => {
 		isSearchOpen = false;
+		isLocaleMenuOpen = false;
 		if (typeof document !== 'undefined') {
 			document.documentElement.lang = site.language;
 		}
@@ -50,28 +61,53 @@
 		document.documentElement.lang = site.language;
 		syncThemeFromStorage();
 
+		const handleDocumentPointerDown = (event: PointerEvent) => {
+			if (
+				!isLocaleMenuOpen ||
+				!localeMenuEl ||
+				!(event.target instanceof Node) ||
+				localeMenuEl.contains(event.target)
+			) {
+				return;
+			}
+
+			isLocaleMenuOpen = false;
+		};
+
+		const handleDocumentKeydown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') {
+				isLocaleMenuOpen = false;
+			}
+		};
+
+		document.addEventListener('pointerdown', handleDocumentPointerDown);
+		document.addEventListener('keydown', handleDocumentKeydown);
+
 		const pathname = stripBasePath(window.location.pathname, base);
 		const shouldRedirectFromRoot = pathname === '/' || pathname === '';
 
-		if (!shouldRedirectFromRoot) {
-			return;
+		if (shouldRedirectFromRoot) {
+			const storedLocale = localStorage.getItem('preferredLocale');
+			const preferredLocale =
+				storedLocale && isLocale(storedLocale)
+					? storedLocale
+					: getPreferredLocale(window.navigator.languages);
+
+			if (preferredLocale !== routeLocale) {
+				const nextPath = withBasePath(toLocalePathname(pathname, preferredLocale), base);
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
+				void goto(`${nextPath}${window.location.search}${window.location.hash}`, {
+					replaceState: true,
+					noScroll: true,
+					keepFocus: true
+				});
+			}
 		}
 
-		const storedLocale = localStorage.getItem('preferredLocale');
-		const preferredLocale =
-			storedLocale && isLocale(storedLocale)
-				? storedLocale
-				: getPreferredLocale(window.navigator.languages);
-
-		if (preferredLocale !== routeLocale) {
-			const nextPath = withBasePath(toLocalePathname(pathname, preferredLocale), base);
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			void goto(`${nextPath}${window.location.search}${window.location.hash}`, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
-			});
-		}
+		return () => {
+			document.removeEventListener('pointerdown', handleDocumentPointerDown);
+			document.removeEventListener('keydown', handleDocumentKeydown);
+		};
 	});
 
 	const toggleTheme = () => {
@@ -94,6 +130,7 @@
 			return;
 		}
 
+		isLocaleMenuOpen = false;
 		persistLocale(locale);
 		const nextPath = withBasePath(
 			toLocalePathname(stripBasePath(page.url.pathname, base), locale),
@@ -105,11 +142,6 @@
 			noScroll: true,
 			keepFocus: true
 		});
-	};
-
-	const handleLocaleChange = (event: Event) => {
-		const select = event.currentTarget as HTMLSelectElement;
-		switchLocale(select.value);
 	};
 </script>
 
@@ -136,18 +168,53 @@
 					<span class="material-symbols-outlined" data-icon="search">search</span>
 					<span class="ui-font">{ui.nav.searchButton}</span>
 				</button>
-				<label class="visually-hidden" for="locale-select">{ui.nav.localeSwitch}</label>
-				<select
-					id="locale-select"
-					class="locale-link locale-select ui-font"
-					value={routeLocale}
-					aria-label={ui.nav.localeSwitch}
-					onchange={handleLocaleChange}
-				>
-					{#each localeOptions as localeOption (localeOption)}
-						<option value={localeOption}>{getLocaleLabel(localeOption)}</option>
-					{/each}
-				</select>
+				{#if hasLocaleSwitcher}
+					<div class="locale-switcher" bind:this={localeMenuEl}>
+						{#if shouldShowLocaleMenu}
+							<button
+								type="button"
+								class="locale-trigger ui-font"
+								aria-label={ui.nav.localeSwitch}
+								aria-haspopup="listbox"
+								aria-expanded={isLocaleMenuOpen}
+								onclick={() => {
+									isLocaleMenuOpen = !isLocaleMenuOpen;
+								}}
+							>
+								<span class="locale-current">{currentLocaleLabel}</span>
+								<span class="material-symbols-outlined locale-chevron" data-icon="expand_more">
+									expand_more
+								</span>
+							</button>
+
+							{#if isLocaleMenuOpen}
+								<div class="locale-menu" role="listbox" aria-label={ui.nav.localeSwitch}>
+									{#each localeOptions as localeOption (localeOption)}
+										<button
+											type="button"
+											class="locale-option ui-font"
+											role="option"
+											aria-selected={localeOption === routeLocale}
+											data-active={localeOption === routeLocale ? 'true' : 'false'}
+											onclick={() => switchLocale(localeOption)}
+										>
+											<span>{getLocaleLabel(localeOption)}</span>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						{:else if pairedLocale}
+							<button
+								type="button"
+								class="locale-trigger locale-trigger-single ui-font"
+								aria-label={ui.nav.localeSwitch}
+								onclick={() => switchLocale(pairedLocale)}
+							>
+								<span class="locale-current">{getLocaleLabel(pairedLocale)}</span>
+							</button>
+						{/if}
+					</div>
+				{/if}
 				<button onclick={toggleTheme} aria-label="Toggle theme" class="theme-toggle">
 					<span
 						class="material-symbols-outlined"

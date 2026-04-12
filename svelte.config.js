@@ -33,8 +33,9 @@ const config = {
 		}),
 		prerender: {
 			handleUnseenRoutes: ({ routes, message }) => {
-				const allowedRoutes = new Set(['/en/blog/[slug]']);
-				const unexpectedRoutes = routes.filter((route) => !allowedRoutes.has(route));
+				const unexpectedRoutes = routes.filter(
+					(route) => route !== '/en/blog/[slug]' && !route.startsWith('/[locale=translatedLocale]')
+				);
 
 				if (unexpectedRoutes.length === 0) {
 					console.warn(message);

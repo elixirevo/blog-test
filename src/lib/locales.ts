@@ -84,10 +84,10 @@ export const parseLocaleList = (value: string | undefined): Locale[] => {
 		});
 };
 
-export const sourceLocale = normalizeLocale(publicEnv.PUBLIC_SOURCE_LOCALE, 'ko');
+export const sourceLocale = normalizeLocale(publicEnv.PUBLIC_SOURCE_LOCALE, 'en');
 
 export const translationLocales = parseLocaleList(
-	publicEnv.PUBLIC_TRANSLATION_LOCALES || publicEnv.PUBLIC_TRANSLATION_LOCALE || 'en'
+	publicEnv.PUBLIC_TRANSLATION_LOCALES ?? publicEnv.PUBLIC_TRANSLATION_LOCALE ?? ''
 ).filter((locale) => locale !== sourceLocale);
 
 export const configuredLocales = [sourceLocale, ...translationLocales];
